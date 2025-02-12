@@ -1,9 +1,10 @@
 {
-  description = "NixOS + standalone home-manager config flakes to get you started!";
+  description =
+    "NixOS + standalone home-manager config flakes to get you started!";
 
   inputs = {
     # nixpkgs.url = "github:nixos/nixpkgs/nixos-25.05";
-    nixpkgs.follows = "nixpkgs-unstable"; 
+    nixpkgs.follows = "nixpkgs-unstable";
     nixpkgs-unstable.url = "github:nixos/nixpkgs/nixpkgs-unstable";
 
     nix-darwin.url = "github:LnL7/nix-darwin";
@@ -36,70 +37,54 @@
     };
   };
 
-  outputs = inputs@{ flake-parts, self,... }:
-  flake-parts.lib.mkFlake { inherit inputs; } {
-    flake = {
-      # Put your original flake attributes here.
-    };
-
-    imports = [
-      inputs.ez-configs.flakeModule
-      ./modules/nix
-      ./nvim
-    ];
-
-    ezConfigs = {
-      root = ./.;
-      globalArgs = { 
-        inherit inputs self; 
-        # inherit (self) packages;
-      };
-      home.configurationsDirectory = ./hosts/home-manager;
-      home.modulesDirectory = ./modules/home-manager;
-
-      nixos.configurationsDirectory = ./hosts/nixos;
-      nixos.hosts = {
-        desktop = {
-          userHomeModules = [ "reyhan" ];
-        };
-
-        wsl = {
-          userHomeModules = [ "reyhan" ];
-        };
+  outputs = inputs@{ flake-parts, self, ... }:
+    flake-parts.lib.mkFlake { inherit inputs; } {
+      flake = {
+        # Put your original flake attributes here.
       };
 
-      darwin.configurationsDirectory = ./hosts/darwin;
-    };
+      imports = [ inputs.ez-configs.flakeModule ./modules/nix ./nvim ];
 
-    systems = [
-      "x86_64-linux"
-      "x86_64-darwin"
-      "aarch64-linux"
-      "aarch64-darwin"
-    ];
+      ezConfigs = {
+        root = ./.;
+        globalArgs = {
+          inherit inputs self;
+          # inherit (self) packages;
+        };
+        home.configurationsDirectory = ./hosts/home-manager;
+        home.modulesDirectory = ./modules/home-manager;
 
-    perSystem = { config, system, lib, inputs', ... }: {
-      formatter = inputs'.nixpkgs.nixfmt-rfc-style;
-      _module.args =
-        let
+        nixos.configurationsDirectory = ./hosts/nixos;
+        nixos.hosts = {
+          desktop = { userHomeModules = [ "reyhan" ]; };
+
+          wsl = { userHomeModules = [ "reyhan" ]; };
+        };
+
+        darwin.configurationsDirectory = ./hosts/darwin;
+      };
+
+      systems =
+        [ "x86_64-linux" "x86_64-darwin" "aarch64-linux" "aarch64-darwin" ];
+
+      perSystem = { system, lib, inputs', ... }: {
+        formatter = inputs'.nixpkgs.nixfmt-rfc-style;
+        _module.args = let
           overlays = [
             # inputs.ocaml-overlay.overlays.default
           ] ++ lib.attrValues self.overlays;
-          icons = import ./icons.nix;
-          colors = import ./colors.nix { inherit lib; };
+          icons = import ./modules/nix/icons.nix;
+          colors = import ./modules/nix/colors.nix { inherit lib; };
           color = colors.mkColor colors.lists.edge;
-        in
-        rec {
+        in rec {
           inherit icons colors color;
           # the nix package manager configurations and settings.
-          nix =
-            import ./nix.nix {
-              inherit lib inputs inputs';
-              inherit (pkgs) stdenv;
-            }
-            // {
-              package = branches.master.nix;
-            };
+          nix = import ./nix.nix {
+            inherit lib inputs inputs';
+            inherit (pkgs) stdenv;
+          } // {
+            package = branches.master.nix;
+          };
 
           pkgs = import inputs.nixpkgs {
             inherit system;
@@ -123,61 +108,43 @@
             overlays = lib.mkForce overlays;
           };
 
-          /*
-            One can access these nixpkgs branches like so:
+          /* One can access these nixpkgs branches like so:
 
-            `branches.stable.mpd'
-            `branches.master.linuxPackages_xanmod'
+             `branches.stable.mpd'
+             `branches.master.linuxPackages_xanmod'
           */
-          branches =
-            let
-              pkgsFrom =
-                branch: system:
-                import branch {
-                  inherit system;
-                  inherit (nixpkgs) config;
-                };
-            in
-            {
-              master = pkgsFrom inputs.nixpkgs-master system;
-              stable = pkgsFrom inputs.nixpkgs-stable system;
-              unstable = pkgsFrom inputs.nixpkgs-unstable system;
-            };
+          branches = let
+            pkgsFrom = branch: system:
+              import branch {
+                inherit system;
+                inherit (nixpkgs) config;
+              };
+          in {
+            master = pkgsFrom inputs.nixpkgs-master system;
+            stable = pkgsFrom inputs.nixpkgs-stable system;
+            unstable = pkgsFrom inputs.nixpkgs-unstable system;
+          };
 
-          /*
-            Extra arguments passed to the module system for:
+          /* Extra arguments passed to the module system for:
 
-            `nix-darwin`
-            `NixOS`
-            `home-manager`
+             `nix-darwin`
+             `NixOS`
+             `home-manager`
           */
           extraModuleArgs = {
-            inherit
-              inputs'
-              system
-              branches
-              colors
-              color
-              icons
-              ;
+            inherit inputs' system branches colors color icons;
             inputs = lib.mkForce inputs;
           };
 
           # NixOS and nix-darwin base environment.systemPackages
-          basePackagesFor =
-            pkgs:
+          basePackagesFor = pkgs:
             builtins.attrValues {
-              inherit (pkgs)
-                vim
-                curl
-                fd
-                wget
-                git
-                ;
+              inherit (pkgs) vim curl fd wget git;
 
-              home-manager = inputs'.home-manager.packages.home-manager.override {
-                path = "${inputs.home-manager}";
-              };
+              home-manager =
+                inputs'.home-manager.packages.home-manager.override {
+                  path = "${inputs.home-manager}";
+                };
             };
         };
       };
