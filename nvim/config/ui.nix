@@ -1,10 +1,4 @@
-{
-  branches,
-  helpers,
-  icons,
-  pkgs,
-  ...
-}:
+{ helpers, icons, pkgs, ... }:
 let
   indentBlankLineHighlights = [
     "rainbowcol1"
@@ -42,8 +36,7 @@ let
     };
   };
 
-in
-{
+in {
   # highlight."@neorg.tags.ranged_verbatim.code_block".link = "Fg";
 
   extraPlugins = with pkgs.vimPlugins; [
@@ -59,30 +52,24 @@ in
     nvzone-typr
   ];
 
-  plugins.lz-n.plugins = [
-    {
-      __unkeyed-1 = "typr";
-      cmd = [
-        "Typr"
-        "TyprStats"
-      ];
-    }
-  ];
+  plugins.lz-n.plugins = [{
+    __unkeyed-1 = "typr";
+    cmd = [ "Typr" "TyprStats" ];
+  }];
 
   userCommands.StatusLine.desc = "Toggle Status Line";
-  userCommands.StatusLine.command.__raw =
-    helpers.mkLuaFun
-      # lua
-      ''
-        local toggle = function()
-          if vim.g.unhide_lualine == nil then
-            vim.g.unhide_lualine = true
-          end  
-          vim.g.unhide_lualine = not vim.g.unhide_lualine
-          return vim.g.unhide_lualine
-        end
-        require('lualine').hide({ unhide = toggle() })
-      '';
+  userCommands.StatusLine.command.__raw = helpers.mkLuaFun
+    # lua
+    ''
+      local toggle = function()
+        if vim.g.unhide_lualine == nil then
+          vim.g.unhide_lualine = true
+        end  
+        vim.g.unhide_lualine = not vim.g.unhide_lualine
+        return vim.g.unhide_lualine
+      end
+      require('lualine').hide({ unhide = toggle() })
+    '';
 
   plugins.which-key.settings.spec = [
 
@@ -112,8 +99,6 @@ in
 
   ];
 
-  plugins.wakatime.enable = true;
-
   plugins.image.enable = true;
   plugins.image.integrations.neorg.enabled = true;
   plugins.image.editorOnlyRenderWhenFocused = true;
@@ -137,6 +122,37 @@ in
   };
 
   plugins.cursorline.enable = true;
+  plugins.bufferline.enable = true;
+  plugins.bufferline.luaConfig.pre = # lua
+    ''
+      --- Check if a buffer is valid
+      ---@param bufnr number? The buffer to check, default to current buffer
+      ---@return boolean # Whether the buffer is valid or not
+      function buffer_is_valid(bufnr)
+        if not bufnr then bufnr = 0 end
+        return vim.api.nvim_buf_is_valid(bufnr) and vim.bo[bufnr].buflisted
+      end
+
+      --- Close a given buffer
+      ---@param bufnr? number The buffer to close or the current buffer if not provided
+      ---@param force? boolean Whether or not to foce close the buffers or confirm changes (default: false)
+      function buffer_close(bufnr, force)
+        if not bufnr or bufnr == 0 then bufnr = vim.api.nvim_get_current_buf() end
+        local buftype = vim.api.nvim_get_option_value("buftype", { buf = bufnr })
+        vim.cmd(("silent! %s %d"):format((force or buftype == "terminal") and "bdelete!" or "confirm bdelete", bufnr))
+      end
+
+      --- Close all buffers
+      ---@param keep_current? boolean Whether or not to keep the current buffer (default: false)
+      ---@param force? boolean Whether or not to foce close the buffers or confirm changes (default: false)
+      function buffer_close_all(keep_current, force)
+        if keep_current == nil then keep_current = false end
+        local current = vim.api.nvim_get_current_buf()
+        for _, bufnr in ipairs(vim.t.bufs) do
+          if not keep_current or bufnr ~= current then buffer_close(bufnr, force) end
+        end
+      end
+    '';
 
   # based on {https://github.com/r17x/nixpkgs/blob/main/configs/nvim/lua/config/nvim-tree.lua}
   plugins.nvim-tree.enable = true;
@@ -164,11 +180,8 @@ in
   plugins.indent-blankline.settings.scope.char = icons.indent;
   plugins.indent-blankline.settings.scope.highlight = indentBlankLineHighlights;
   plugins.indent-blankline.settings.whitespace.highlight = [ "Whitespace" ];
-  plugins.indent-blankline.settings.exclude.buftypes = [
-    "nofile"
-    "terminal"
-    "neorg"
-  ];
+  plugins.indent-blankline.settings.exclude.buftypes =
+    [ "nofile" "terminal" "neorg" ];
   plugins.indent-blankline.settings.exclude.filetypes = [
     "norg"
     "NvimTree"
@@ -197,17 +210,14 @@ in
   # colorscheme = "onedark";
   colorschemes.onedark.enable = true;
 
-  autoCmd = [
-    {
-      event = [ "User" ];
-      pattern = "LspProgressStatusUpdated";
-      callback.__raw =
-        helpers.mkLuaFun # lua
-          ''
-            require('lualine').refresh()
-          '';
-    }
-  ];
+  autoCmd = [{
+    event = [ "User" ];
+    pattern = "LspProgressStatusUpdated";
+    callback.__raw = helpers.mkLuaFun # lua
+      ''
+        require('lualine').refresh()
+      '';
+  }];
 
   plugins.notify.enable = true;
   plugins.nvim-ufo = {
@@ -248,13 +258,11 @@ in
     lazyLoad.settings = {
       event = "InsertEnter";
       cmd = "SmearCursorToggle";
-      keys = [
-        {
-          __unkeyed-1 = "<leader>tsc";
-          __unkeyed-2 = "<cmd>SmearCursorToggle<cr>";
-          desc = "Toggle Animation Cursor";
-        }
-      ];
+      keys = [{
+        __unkeyed-1 = "<leader>tsc";
+        __unkeyed-2 = "<cmd>SmearCursorToggle<cr>";
+        desc = "Toggle Animation Cursor";
+      }];
     };
   };
 
@@ -283,21 +291,17 @@ in
   plugins.lualine.enable = true;
   plugins.lualine.settings.theme = "edge";
   plugins.lualine.settings.options.disabled_filetypes.__unkeyed-1 = "NvimTree";
-  plugins.lualine.settings.options.disabled_filetypes.statusline = [
-    "sagaoutline"
-    "Trouble"
-  ];
+  plugins.lualine.settings.options.disabled_filetypes.statusline =
+    [ "sagaoutline" "Trouble" ];
   plugins.lualine.settings.options.component_separators.left = "";
   plugins.lualine.settings.options.component_separators.right = "";
   plugins.lualine.settings.options.section_separators.left = icons.circleRight;
   plugins.lualine.settings.options.section_separators.right = icons.circleLeft;
-  plugins.lualine.settings.sections.lualine_a = [
-    {
-      __unkeyed-1 = "mode";
-      separator.right = icons.circleRight;
-      padding.left = 1;
-    }
-  ];
+  plugins.lualine.settings.sections.lualine_a = [{
+    __unkeyed-1 = "mode";
+    separator.right = icons.circleRight;
+    padding.left = 1;
+  }];
   plugins.lualine.settings.sections.lualine_b = [
     {
       __unkeyed-1 = "branch";
@@ -305,13 +309,9 @@ in
     }
     "diff"
   ];
-  plugins.lualine.settings.sections.lualine_c = [
-    "diagnostics"
-  ];
-  plugins.lualine.settings.sections.lualine_x = [
-    "searchcount"
-    "selectioncount"
-  ];
+  plugins.lualine.settings.sections.lualine_c = [ "diagnostics" ];
+  plugins.lualine.settings.sections.lualine_x =
+    [ "searchcount" "selectioncount" ];
   plugins.lualine.settings.sections.lualine_y = [
     {
       __unkeyed-1.__raw =
@@ -348,13 +348,11 @@ in
     }
     "progress"
   ];
-  plugins.lualine.settings.sections.lualine_z = [
-    {
-      __unkeyed-1 = "location";
-      separator.left = icons.circleLeft;
-      padding.right = 1;
-    }
-  ];
+  plugins.lualine.settings.sections.lualine_z = [{
+    __unkeyed-1 = "location";
+    separator.left = icons.circleLeft;
+    padding.right = 1;
+  }];
   plugins.lualine.settings.winbar = { };
   plugins.lualine.settings.tabline = { };
   plugins.lualine.settings.extensions = [ ];
@@ -365,88 +363,83 @@ in
   plugins.treesitter.settings.highlight.enable = true;
   #plugins.treesitter.nixvimInjections = true;
   #plugins.treesitter.nixGrammars = true;
-  plugins.treesitter.grammarPackages =
-    builtins.map
-      (
-        x:
-        pkgs.vimPlugins.nvim-treesitter.builtGrammars.${x} or pkgs.tree-sitter-grammars."tree-sitter-${x}"
-      )
-      [
-        # ┌────────────────────────────────────┐
-        # │ move to ignoreInstall for disabled │
-        # └────────────────────────────────────┘
-        "asm"
-        "bash"
-        "c"
-        "cmake"
-        "comment"
-        "css"
-        "dhall"
-        "diff"
-        "dockerfile"
-        "dot"
-        "fish"
-        "git_config"
-        "git_rebase"
-        "gitattributes"
-        "gitcommit"
-        "gitignore"
-        "go"
-        "gomod"
-        "gosum"
-        "gotmpl"
-        "gpg"
-        "graphql"
-        "haskell"
-        "haskell_persistent"
-        "hcl"
-        "helm"
-        "html"
-        "http"
-        "javascript"
-        "jq"
-        "jsdoc"
-        "json"
-        "latex"
-        "lua"
-        "luadoc"
-        "luap"
-        "luau"
-        "make"
-        "markdown"
-        "markdown_inline"
-        "mermaid"
-        "nix"
-        "norg"
-        "norg-meta"
-        "ocaml"
-        "ocaml_interface"
-        "ocamllex"
-        "passwd"
-        "po"
-        "proto"
-        "pymanifest"
-        "python"
-        "query"
-        "regex"
-        "rust"
-        "rescript"
-        "sql"
-        "ssh_config"
-        "templ"
-        "terraform"
-        "textproto"
-        "tmux"
-        "todotxt"
-        "toml"
-        "tsx"
-        "typescript"
-        "vhs"
-        "vim"
-        "vimdoc"
-        "xml"
-        "yaml"
-      ];
+  plugins.treesitter.grammarPackages = builtins.map (x:
+    pkgs.vimPlugins.nvim-treesitter.builtGrammars.${x} or pkgs.tree-sitter-grammars."tree-sitter-${x}") [
+      # ┌────────────────────────────────────┐
+      # │ move to ignoreInstall for disabled │
+      # └────────────────────────────────────┘
+      "asm"
+      "bash"
+      "c"
+      "cmake"
+      "comment"
+      "css"
+      "dhall"
+      "diff"
+      "dockerfile"
+      "dot"
+      "fish"
+      "git_config"
+      "git_rebase"
+      "gitattributes"
+      "gitcommit"
+      "gitignore"
+      "go"
+      "gomod"
+      "gosum"
+      "gotmpl"
+      "gpg"
+      "graphql"
+      "haskell"
+      "haskell_persistent"
+      "hcl"
+      "helm"
+      "html"
+      "http"
+      "javascript"
+      "jq"
+      "jsdoc"
+      "json"
+      "latex"
+      "lua"
+      "luadoc"
+      "luap"
+      "luau"
+      "make"
+      "markdown"
+      "markdown_inline"
+      "mermaid"
+      "nix"
+      "norg"
+      "norg-meta"
+      "ocaml"
+      "ocaml_interface"
+      "ocamllex"
+      "passwd"
+      "po"
+      "proto"
+      "pymanifest"
+      "python"
+      "query"
+      "regex"
+      "rust"
+      "rescript"
+      "sql"
+      "ssh_config"
+      "templ"
+      "terraform"
+      "textproto"
+      "tmux"
+      "todotxt"
+      "toml"
+      "tsx"
+      "typescript"
+      "vhs"
+      "vim"
+      "vimdoc"
+      "xml"
+      "yaml"
+    ];
 
   # plugins.treesitter.settings.ignore_install = [
   #   # ┌─────────────────────────────────────┐
