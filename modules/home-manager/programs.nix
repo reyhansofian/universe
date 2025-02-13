@@ -1,4 +1,4 @@
-{ pkgs, lib, ... }: {
+{
   programs = {
     home-manager.enable = true;
     fzf.enable = true;
@@ -19,8 +19,5 @@
       enable = true;
       settings = { use-agent = true; };
     };
-
-    git.enable = true;
-    git.extraConfig.diff.sopsdiffer.textconv = "sops -d --config /dev/null";
   };
 }
