@@ -13,6 +13,7 @@
   sops.gnupg.sshKeyPaths = [ ];
   sops.defaultSopsFile = "${self}/modules/secrets/secret.yml";
   sops.secrets.open_api_key = { };
+  sops.secrets.anthropic_api_key = { };
   # sops.secrets.codeium.path = "%r/codeium";
 
   home = {
@@ -23,6 +24,8 @@
     homeDirectory = "/home/reyhan";
     sessionVariables.OPENAI_API_KEY = # bash
       ''$(<"${config.sops.secrets.open_api_key.path}")'';
+    sessionVariables.ANTHROPIC_API_KEY = # bash
+      ''$(<"${config.sops.secrets.anthropic_api_key.path}")'';
   };
 
   services = {
