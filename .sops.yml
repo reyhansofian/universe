@@ -1,0 +1,7 @@
+keys:
+  - &reyhan D59986BBDDA8A2744D757EA7CB9E5441CB526E5D
+creation_rules:
+  - path_regex: modules/secrets/(?:[^/]+/)*[^/]+\.(yml|yaml|json|env|ini|norg)$
+    key_groups:
+    - pgp:
+      - *reyhan

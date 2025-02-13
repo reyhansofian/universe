@@ -4,7 +4,7 @@
     change-ssh-permission = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
       $DRY_RUN_CMD chmod $VERBOSE_ARG 600 ~/.ssh/id_ed.pub
       $DRY_RUN_CMD chmod $VERBOSE_ARG 600 ~/.ssh/efish_ed.pub
-      $DRY_RUN_CMD chmod $VERBOSE_ARG 600 ~/.ssh/user-ubuntu-vm.pub
+      # $DRY_RUN_CMD chmod $VERBOSE_ARG 600 ~/.ssh/user-ubuntu-vm.pub
       $DRY_RUN_CMD chmod $VERBOSE_ARG 600 ~/.ssh/gitlab.pub
     '';
   };
@@ -53,15 +53,15 @@
           AddKeysToAgent = "yes";
         };
       };
-      "ubuntu.local" = {
-        hostname = "vm.local";
-        identityFile = "~/.ssh/user-ubuntu-vm";
-        identitiesOnly = true;
-        user = "user";
-        extraOptions = {
-          AddKeysToAgent = "yes";
-        };
-      };
+      # "ubuntu.local" = {
+      #   hostname = "vm.local";
+      #   identityFile = "~/.ssh/user-ubuntu-vm";
+      #   identitiesOnly = true;
+      #   user = "user";
+      #   extraOptions = {
+      #     AddKeysToAgent = "yes";
+      #   };
+      # };
     };
   };
 }

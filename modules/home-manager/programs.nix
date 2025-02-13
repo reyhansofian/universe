@@ -19,5 +19,7 @@
       enable = true;
       settings = { use-agent = true; };
     };
+
+    git.extraConfig.diff.sopsdiffer.textconv = "sops -d --config /dev/null";
   };
 }

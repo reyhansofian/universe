@@ -3,8 +3,10 @@
     "NixOS + standalone home-manager config flakes to get you started!";
 
   inputs = {
-    # nixpkgs.url = "github:nixos/nixpkgs/nixos-25.05";
     nixpkgs.follows = "nixpkgs-unstable";
+    nixpkgs-master.url = "github:nixos/nixpkgs/master";
+    nixpkgs-stable.url = "github:nixos/nixpkgs/25.05-pre";
+    nixpkgs-stable-24.url = "github:nixos/nixpkgs/nixos-24.11";
     nixpkgs-unstable.url = "github:nixos/nixpkgs/nixpkgs-unstable";
 
     nix-darwin.url = "github:LnL7/nix-darwin";
@@ -35,6 +37,10 @@
       url = "github:nix-community/nixos-generators";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    # secret management
+    sops.url = "github:Mic92/sops-nix";
+    sops.inputs.nixpkgs.follows = "nixpkgs";
   };
 
   outputs = inputs@{ flake-parts, self, ... }:
@@ -68,10 +74,24 @@
         [ "x86_64-linux" "x86_64-darwin" "aarch64-linux" "aarch64-darwin" ];
 
       perSystem = { system, lib, inputs', ... }: {
-        formatter = inputs'.nixpkgs.nixfmt-rfc-style;
+        formatter = inputs'.nixpkgs.legacyPackages.nixfmt-rfc-style;
         _module.args = let
           overlays = [
             # inputs.ocaml-overlay.overlays.default
+            (final: prev: {
+              vimPlugins = prev.vimPlugins.extend (_: p: {
+                avante-nvim = p.avante-nvim.overrideAttrs (_: {
+                  # inherit (old) name;
+                  src = prev.fetchFromGitHub {
+                    owner = "yetone";
+                    repo = "avante.nvim";
+                    rev = "v0.0.16";
+                    hash =
+                      "sha256-JTuVq5fil2bpkptpw+kj0PFOp9Rk7RpOxc0GN/blL6M=";
+                  };
+                });
+              });
+            })
           ] ++ lib.attrValues self.overlays;
           icons = import ./modules/nix/icons.nix;
           colors = import ./modules/nix/colors.nix { inherit lib; };
@@ -122,6 +142,7 @@
           in {
             master = pkgsFrom inputs.nixpkgs-master system;
             stable = pkgsFrom inputs.nixpkgs-stable system;
+            stable-24 = pkgsFrom inputs.nixpkgs-stable-24 system;
             unstable = pkgsFrom inputs.nixpkgs-unstable system;
           };
 

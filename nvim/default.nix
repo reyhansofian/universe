@@ -1,18 +1,9 @@
-{ self, inputs, ... }:
-{
-  perSystem =
-    {
-      pkgs,
-      system,
-      icons,
-      branches,
-      ...
-    }:
+{ self, inputs, ... }: {
+  perSystem = { nixpkgs, pkgs, system, icons, branches, ... }:
     let
       nixvimLib = inputs.nixvim.lib;
       helpers = nixvimLib.nixvim // {
-        mkLuaFunWithName =
-          name: lua:
+        mkLuaFunWithName = name: lua:
           # lua
           ''
             function ${name}()
@@ -20,8 +11,7 @@
             end
           '';
 
-        mkLuaFun =
-          lua: # lua
+        mkLuaFun = lua: # lua
           ''
             function()
               ${lua}
@@ -31,22 +21,16 @@
       nixvim' = inputs.nixvim.legacyPackages.${system};
       nixvimModule = {
         inherit pkgs;
+        # vimPlugins.avante-nvim = branches.stable.vimPlugins.avante-nvim;
         module = import ./config; # import the module directly
         # You can use `extraSpecialArgs` to pass additional arguments to your module files
-        extraSpecialArgs = {
-          inherit
-            icons
-            branches
-            helpers
-            system
-            self
-            ;
-        };
+        extraSpecialArgs = { inherit icons branches helpers system self; };
       };
       nvim = nixvim'.makeNixvimWithModule nixvimModule;
-      nvimCheck = nixvimLib.${system}.check.mkTestDerivationFromNixvimModule nixvimModule;
-    in
-    {
+      nvimCheck =
+        nixvimLib.${system}.check.mkTestDerivationFromNixvimModule nixvimModule;
+    in {
+      # packages.x86_64-linux.nvim.config.nixpkgs.pkgs.vimPlugins.avante-nvim
       checks = {
         # Run `nix flake check .` to verify that your config is not broken
         nvim = nvimCheck;

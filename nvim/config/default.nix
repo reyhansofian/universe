@@ -14,6 +14,7 @@
     ./plugins/avante.nix
     ./plugins/markview.nix
     ./global.nix
+    ./secret.nix
     ./lsp.nix
     ./keymap.nix
     ./ui.nix

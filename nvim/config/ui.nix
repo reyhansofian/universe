@@ -48,7 +48,6 @@ in {
     unicode-vim
     lsp-progress-nvim
 
-    # TODO: removed branches when inputs.nixpkgs-unstable is updated
     nvzone-typr
   ];
 

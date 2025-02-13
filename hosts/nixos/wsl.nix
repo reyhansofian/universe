@@ -27,6 +27,7 @@
   environment.shells = with pkgs; [ zsh ];
   environment.variables = { VAGRANT_WSL_ENABLE_WINDOWS_ACCESS = "1"; };
 
+  networking.hostName = "nixos";
   networking.extraHosts = "192.168.0.157 ubuntu.local";
 
   fonts.fontDir.enable = true;
