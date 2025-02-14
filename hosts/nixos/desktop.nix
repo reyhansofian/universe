@@ -1,4 +1,4 @@
-{ pkgs, inputs, modulesPath, ... }: {
+{ nixpkgs, pkgs, inputs, modulesPath, self, ... }: {
   imports = [
     "${modulesPath}/profiles/base.nix"
     "${modulesPath}/profiles/all-hardware.nix"
@@ -15,10 +15,6 @@
     nix-path = [ "nixpkgs=${inputs.nixpkgs}" ];
     experimental-features = [ "flakes" "nix-command" ];
   };
-  # users.users.reyhan.group = "reyhan";
-  #  users.groups.reyhan = {};
-  #  users.users.reyhan.isNormalUser = true;
-  #  users.users.reyhan.initialHashedPassword = "nixos";
 
   users.extraUsers = {
     root = { hashedPassword = "*"; };
@@ -29,7 +25,6 @@
       extraGroups =
         [ "wheel" "networkmanager" "wireshark" "docker" "kvm" "vboxusers" ];
       useDefaultShell = true;
-      # openssh.authorizedKeys.keys = keys.jtojnar;
 
       # generated using `mkpasswd --method=sha-512`
       hashedPassword =
@@ -44,12 +39,8 @@
   # virtualisation.virtualbox.host.enable = true;
   # virtualisation.virtualbox.host.enableExtensionPack = true;
 
-  programs.hyprland.enable = true;
-  programs.zsh.enable = true;
-
-  environment.systemPackages = with pkgs; [ ];
+  # environment.systemPackages = pkgs;
   environment.shells = with pkgs; [ zsh ];
-  environment.variables = { VAGRANT_WSL_ENABLE_WINDOWS_ACCESS = "1"; };
 
   networking.extraHosts = "192.168.0.157 ubuntu.local";
 
@@ -59,4 +50,9 @@
     nerd-fonts.droid-sans-mono
     nerd-fonts.hack
   ];
+
+  nixosConfigurations.HOSTNAME = nixpkgs.lib.nixosSystem {
+    specialArgs = { inherit inputs; }; # this is the important part
+    modules = [ "${self}/modules/hyprland" ];
+  };
 }

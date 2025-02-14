@@ -41,6 +41,13 @@
     # secret management
     sops.url = "github:Mic92/sops-nix";
     sops.inputs.nixpkgs.follows = "nixpkgs";
+
+    # Desktop Environment using Hyprland
+    hyprland.url = "github:hyprwm/Hyprland";
+    hyprland-plugins = {
+      url = "github:hyprwm/hyprland-plugins";
+      inputs.hyprland.follows = "hyprland";
+    };
   };
 
   outputs = inputs@{ flake-parts, self, ... }:
@@ -77,11 +84,11 @@
         formatter = inputs'.nixpkgs.legacyPackages.nixfmt-rfc-style;
         _module.args = let
           overlays = [
-            # inputs.ocaml-overlay.overlays.default
+            # force downgrade Avante version to v0.0.16 due to bug
+            # https://github.com/yetone/avante.nvim/issues/1234
             (final: prev: {
               vimPlugins = prev.vimPlugins.extend (_: p: {
                 avante-nvim = p.avante-nvim.overrideAttrs (_: {
-                  # inherit (old) name;
                   src = prev.fetchFromGitHub {
                     owner = "yetone";
                     repo = "avante.nvim";
