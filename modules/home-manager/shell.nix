@@ -1,5 +1,4 @@
-{ pkgs, config, lib, ... }:
-{
+{ pkgs, config, lib, ... }: {
   programs.zsh = {
     enable = true;
     autosuggestion.enable = true;
@@ -19,6 +18,11 @@
       [[ ! -r "$P10K_INSTANT_PROMPT" ]] || source "$P10K_INSTANT_PROMPT"
     '';
 
+    loginExtra = ''
+      export ANTHROPIC_API_KEY="$(<"/home/reyhan/.config/sops-nix/secrets/anthropic_api_key")"
+      export OPENAI_API_KEY="$(<"/home/reyhan/.config/sops-nix/secrets/open_api_key")"
+    '';
+
     plugins = [
       {
         name = "zsh-nix-shell";
@@ -27,8 +31,7 @@
           owner = "chisui";
           repo = "zsh-nix-shell";
           rev = "v0.5.0";
-          sha256 =
-            "0za4aiwwrlawnia4f29msk822rj9bgcygw6a8a6iikiwzjjz0g91";
+          sha256 = "0za4aiwwrlawnia4f29msk822rj9bgcygw6a8a6iikiwzjjz0g91";
         };
       }
       {

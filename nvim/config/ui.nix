@@ -138,7 +138,9 @@ in {
       function buffer_close(bufnr, force)
         if not bufnr or bufnr == 0 then bufnr = vim.api.nvim_get_current_buf() end
         local buftype = vim.api.nvim_get_option_value("buftype", { buf = bufnr })
-        vim.cmd(("silent! %s %d"):format((force or buftype == "terminal") and "bdelete!" or "confirm bdelete", bufnr))
+        if buftype ~= "nofile" then
+          vim.cmd(("silent! %s %d"):format((force or buftype == "terminal") and "bdelete!" or "confirm bdelete", bufnr))
+        end
       end
 
       --- Close all buffers
@@ -161,7 +163,7 @@ in {
   plugins.nvim-tree.respectBufCwd = true;
   plugins.nvim-tree.autoReloadOnWrite = true;
   plugins.nvim-tree.git.enable = true;
-  plugins.nvim-tree.filters.dotfiles = true;
+  plugins.nvim-tree.filters.dotfiles = false;
   plugins.nvim-tree.renderer.highlightGit = true;
   plugins.nvim-tree.renderer.indentMarkers.enable = true;
 

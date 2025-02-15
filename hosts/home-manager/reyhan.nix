@@ -1,4 +1,4 @@
-{ pkgs, ezModules, self, inputs, config, lib, ... }: {
+{ pkgs, ezModules, self, inputs, ... }: {
   imports = with ezModules; [
     fonts
     k8s
@@ -15,30 +15,30 @@
     stateVersion = "25.05";
     sessionPath = [ "~/.local/bin" ];
     homeDirectory = "/home/reyhan";
-    sessionVariables.OPENAI_API_KEY = # bash
-      ''$(<"${config.sops.secrets.open_api_key.path}")'';
-    sessionVariables.ANTHROPIC_API_KEY = # bash
-      ''$(<"${config.sops.secrets.anthropic_api_key.path}")'';
   };
 
   sops.gnupg.home = "~/.gnupg";
   sops.gnupg.sshKeyPaths = [ ];
   sops.defaultSopsFile = "${self}/modules/secrets/secret.yml";
-  sops.secrets.open_api_key = { };
-  sops.secrets.anthropic_api_key = { };
-  # sops.secrets.codeium.path = "%r/codeium";
-  # sops.secrets."${self}/modules/secrets/secret.yml" = {
-  #   restartUnits = [ "home-manager-reyhan.service" ];
-  #   # there is also `reloadUnits` which acts like a `reloadTrigger` in a NixOS systemd service
-  # };
 
-  systemd.user.services.mbsync.Unit.After = [ "sops-nix.service" ];
+  # Manually maps the key you need from your sops' secret file.
+  sops.secrets = {
+    open_api_key = { };
+    anthropic_api_key = { };
+  };
+  sops.secrets."${self}/modules/secrets/secret.yml" = {
+    # there is also `reloadUnits` which acts like a `reloadTrigger` in a NixOS systemd service
+    restartUnits = [ "home-manager-reyhan.service" ];
+  };
+
   services = {
     gpg-agent = {
       enable = true;
       pinentryPackage = pkgs.pinentry-tty;
     };
   };
+
+  systemd.user.services.mbsync.Unit.After = [ "sops-nix.service" ];
   systemd.user.services.rerun-sops-nix = {
     Unit = {
       Description = "sops-nix re-activation";
@@ -49,6 +49,7 @@
     Install = { WantedBy = [ "default.target" "multi-user.target" ]; };
 
     Service = {
+      Type = "oneshot";
       ExecStart = ''
         ${
           pkgs.lib.getExe pkgs.bash
