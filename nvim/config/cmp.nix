@@ -72,7 +72,6 @@
   plugins.cmp-cmdline.enable = true;
   plugins.cmp-spell.enable = true;
   plugins.cmp-dictionary.enable = true;
-  plugins.codeium-nvim = { enable = true; };
 
   plugins.luasnip = {
     enable = true;

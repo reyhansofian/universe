@@ -1,4 +1,6 @@
-{ pkgs, inputs, ... }: {
+{ pkgs, inputs, self, ... }: {
+  nixpkgs = { inherit (self.nixpkgs) config overlays; };
+
   imports = [
     inputs.nixos-wsl.nixosModules.default
     inputs.home-manager.nixosModules.default
@@ -12,9 +14,6 @@
   wsl.docker-desktop.enable = true;
   wsl.wslConf.network.generateHosts = false;
   wsl.wslConf.automount.options = "metadata,uid=1000,gid=100";
-  # wsl.wslConf.boot.command = ''
-  #   systemctl restart --user sops-nix.service
-  # '';
 
   home-manager.useGlobalPkgs = true;
   home-manager.useUserPackages = true;
@@ -23,15 +22,13 @@
     nix-path = [ "nixpkgs=${inputs.nixpkgs}" ];
     experimental-features = [ "flakes" "nix-command" ];
   };
-  nixpkgs.config = { allowUnfree = true; };
-  nixpkgs.overlays = [ ];
 
   virtualisation.virtualbox.host.enable = true;
   virtualisation.virtualbox.host.enableExtensionPack = true;
 
   services.dbus.enable = true;
 
-  # environment.systemPackages = with pkgs; [ ];
+  # environment.systemPackages = [ inputs.nixpkgs-master.claude-code ];
   environment.shells = with pkgs; [ zsh ];
   # environment.variables = { VAGRANT_WSL_ENABLE_WINDOWS_ACCESS = "1"; };
 

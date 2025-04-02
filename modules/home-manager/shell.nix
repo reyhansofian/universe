@@ -57,9 +57,6 @@
     };
 
     initExtra = ''
-      bindkey "^[[1;5D" backward-word
-      bindkey "^[[1;5C" forward-word
-
       ZSH_AUTOSUGGEST_STRATEGY=(completion history)
       export VAGRANT_WSL_ENABLE_WINDOWS_ACCESS="1"
       export PATH="$PATH:/mnt/e/VirtualBox"

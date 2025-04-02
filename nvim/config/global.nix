@@ -1,18 +1,12 @@
-let
-  indent = 2;
-in
-{
+let indent = 2;
+in {
   # clipboard.register = "unnamed";
-  config.keymaps = [
-    {
-      mode = [ "n" "t" ];
-      key = "<c-space>";
-      action = "<cmd>Lspsaga term_toggle<CR>";
-      options = {
-        desc = "Open terminal";
-      };
-    }
-  ];
+  config.keymaps = [{
+    mode = [ "n" "t" ];
+    key = "<c-space>";
+    action = "<cmd>Lspsaga term_toggle<CR>";
+    options = { desc = "Open terminal"; };
+  }];
 
   config.globals.mapleader = " ";
   config.opts = {
@@ -24,7 +18,8 @@ in
     breakindent = true; # wrap indent to match  line start
     clipboard = "unnamedplus"; # connection to the system clipboard
     cmdheight = 0; # hide command line unless needed
-    completeopt = [ "menu" "menuone" "noselect" ]; # Options for insert mode completion
+    completeopt =
+      [ "menu" "menuone" "noselect" ]; # Options for insert mode completion
     copyindent = true; # copy the previous indentation on autoindenting
     cursorline = true; # highlight the text line of the cursor
     fileencoding = "utf-8"; # file content encoding for the buffer

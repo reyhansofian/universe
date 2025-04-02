@@ -14,11 +14,13 @@
     ./plugins/avante.nix
     ./plugins/markview.nix
     ./global.nix
+    ./ai.nix
     ./secret.nix
     ./lsp.nix
     ./keymap.nix
     ./ui.nix
     ./cmp.nix
+    ./autocmd.nix
     ./editor.nix
   ];
 }

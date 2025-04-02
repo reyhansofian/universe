@@ -7,8 +7,8 @@ let
       windows = [{
         window_name = "Me";
         layout = "tiled";
-        shell_command_before = [ "cd ~/evl" ];
-        panes = [ "nvim" "echo happy working" ];
+        shell_command_before = [ "cd ~/.config/universe" ];
+        panes = [ ''kittysay --think "Happy configuring NixOS"'' ];
       }];
     };
 
@@ -17,14 +17,39 @@ let
       windows = [{
         window_name = "Work";
         layout = "tiled";
-        shell_command_before = [ "cd ~/w1" ];
-        panes = [ "nvim" "echo happy working" ];
+        shell_command_before = [ "cd ~/Projects" ];
+        panes = [ ''kittysay --think "Happy working"'' ];
       }];
+    };
+
+    paas = {
+      session_name = "PaaS";
+      windows = [
+        {
+          window_name = "Code";
+          layout = "tiled";
+          shell_command_before = [ "cd ~/Projects/PaaS/monorepo-paas" ];
+          panes = [ ''kittysay --think "Monorepo Code"'' ];
+        }
+        {
+          window_name = "Clan.lol";
+          layout = "even-vertical";
+          shell_command_before = [ "cd ~/Projects/PaaS/clan/paas" ];
+          panes = [
+            ''kittysay --think "PaaS NixOS Deployment using Clan.lol - Code"''
+            ''
+              kittysay --think "PaaS NixOS Deployment using Clan.lol - Terminal"''
+          ];
+        }
+      ];
     };
   };
 
 in {
-  home.shellAliases = {
+  programs.zsh.shellAliases = {
+    tpass = "tmuxp load ${
+        builtins.toFile "tmuxp-paas.json" (builtins.toJSON tmuxWorkspaces.paas)
+      }";
     tmw = "tmuxp load ${
         builtins.toFile "tmuxp-work.json" (builtins.toJSON tmuxWorkspaces.work)
       }";
@@ -34,11 +59,11 @@ in {
   };
 
   programs.tmux.enable = true;
-  programs.tmux.mouse = false;
+  programs.tmux.mouse = true;
   programs.tmux.newSession = true;
   programs.tmux.reverseSplit = true;
   programs.tmux.customPaneNavigationAndResize = true;
-  programs.tmux.prefix = "C-Space";
+  programs.tmux.prefix = "C-b";
   programs.tmux.resizeAmount = 10;
   programs.tmux.terminal = "screen-256color";
   programs.tmux.keyMode = "vi";

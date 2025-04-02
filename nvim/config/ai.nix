@@ -1,36 +1,28 @@
-{
-  lib,
-  helpers,
-  ...
-}:
+{ lib, helpers, icons, ... }:
 
 rec {
-  plugins.codeium-nvim.enable = false;
-  plugins.codeium-nvim.settings.config_path.__raw = # lua
-    ''
-      vim.env.HOME .. '/.config/sops-nix/secrets/codeium'
-    '';
+  plugins.copilot-lua.enable = true;
+  plugins.copilot-lua.settings.suggestion.enabled = false;
+  plugins.copilot-lua.settings.panel.enabled = false;
+  plugins.codeium-nvim.enable = true;
+  # plugins.codeium-nvim.settings.config_path.__raw = # lua
+  #   ''
+  #     vim.env.HOME .. '/.config/sops-nix/secrets/codeium'
+  #   '';
 
-  autoCmd = [
-    {
-      # Disable cmp in neorepl
-      event = [ "FileType" ];
-      pattern = "neorepl";
-      callback.__raw =
-        helpers.mkLuaFun # lua
-          ''
-            require("cmp").setup.buffer { enabled = false }
-          '';
-    }
-  ];
+  autoCmd = [{
+    # Disable cmp in neorepl
+    event = [ "FileType" ];
+    pattern = "neorepl";
+    callback.__raw = helpers.mkLuaFun # lua
+      ''
+        require("cmp").setup.buffer { enabled = false }
+      '';
+  }];
 
   plugins.cmp.settings.sources =
-    lib.optionals plugins.codeium-nvim.enable [
-      { name = "codeium"; }
-    ]
-    ++ lib.optionals plugins.copilot-lua.enable [
-      { name = "copilot"; }
-    ];
+    lib.optionals plugins.codeium-nvim.enable [{ name = "codeium"; }]
+    ++ lib.optionals plugins.copilot-lua.enable [{ name = "copilot"; }];
 
   plugins.which-key.settings.spec = [
 

@@ -50,131 +50,103 @@
     };
   };
 
-  outputs = inputs@{ flake-parts, self, ... }:
+  outputs = inputs@{ flake-parts, ... }:
     flake-parts.lib.mkFlake { inherit inputs; } {
-      flake = {
-        # Put your original flake attributes here.
-      };
 
-      imports = [ inputs.ez-configs.flakeModule ./modules/nix ./nvim ];
+      imports = [
+        inputs.ez-configs.flakeModule
+        ./modules/nix
+        ./nvim
+        ({ lib, ... }: {
+          flake = {
+            overlays.default = final: prev: {
+              branches = let
+                pkgsFrom = branch: system:
+                  import branch {
+                    inherit system;
+                    inherit (inputs.self.nixpkgs) config;
+                  };
+              in {
+                master = pkgsFrom inputs.nixpkgs-master prev.stdenv.system;
+                stable = pkgsFrom inputs.nixpkgs-stable prev.stdenv.system;
+                stable-24 =
+                  pkgsFrom inputs.nixpkgs-stable-24 prev.stdenv.system;
+                unstable = pkgsFrom inputs.nixpkgs-unstable prev.stdenv.system;
+              };
+            };
+
+            # Put your original flake attributes here.
+            nixpkgs = {
+              config = {
+                allowBroken = true;
+                allowUnfree = true;
+                tarball-ttl = 0;
+
+                # Experimental options, disable if you don't know what you are doing!
+                contentAddressedByDefault = false;
+              };
+
+              overlays = [
+                (final: prev: {
+                  vimPlugins = prev.vimPlugins.extend (_: p: {
+                    avante-nvim = p.avante-nvim.overrideAttrs (_: {
+                      src = prev.fetchFromGitHub {
+                        owner = "yetone";
+                        repo = "avante.nvim";
+                        rev = "d4e58f6a22ae424c9ade2146b29dc808a7e4c538";
+                        hash =
+                          "sha256-4fI2u3qZOFadyqMYDJOCgiWrT3aRKVTmEgg7FuZJgGo=";
+                      };
+                    });
+                  });
+                })
+              ] ++ lib.attrValues inputs.self.overlays;
+            };
+
+            icons = import ./modules/nix/icons.nix;
+            colors = import ./modules/nix/colors.nix { inherit lib; };
+            color = inputs.self.colors.mkColor inputs.self.colors.lists.edge;
+          };
+        })
+        {
+          perSystem = { system, inputs', ... }: {
+            formatter = inputs'.nixpkgs.legacyPackages.nixfmt-rfc-style;
+            _module.args = {
+              inherit (inputs.self) icons colors color;
+              extraModuleArgs = { inherit (inputs.self) icons colors color; };
+
+              pkgs = import inputs.nixpkgs {
+                inherit system;
+                inherit (inputs.self.nixpkgs) config overlays;
+              };
+            };
+          };
+        }
+      ];
 
       ezConfigs = {
         root = ./.;
         globalArgs = {
-          inherit inputs self;
+          inherit inputs;
+          inherit (inputs) self;
+          inherit (inputs.self) icons colors color;
           # inherit (self) packages;
         };
         home.configurationsDirectory = ./hosts/home-manager;
         home.modulesDirectory = ./modules/home-manager;
+        # home.users.reyhan.passInOsConfig = true;
 
         nixos.configurationsDirectory = ./hosts/nixos;
+        nixos.modulesDirectory = ./modules/nixos;
         nixos.hosts = {
           desktop = { userHomeModules = [ "reyhan" ]; };
 
           wsl = { userHomeModules = [ "reyhan" ]; };
         };
 
-        darwin.configurationsDirectory = ./hosts/darwin;
+        # darwin.configurationsDirectory = ./hosts/darwin;
       };
 
-      systems =
-        [ "x86_64-linux" "x86_64-darwin" "aarch64-linux" "aarch64-darwin" ];
-
-      perSystem = { system, lib, inputs', ... }: {
-        formatter = inputs'.nixpkgs.legacyPackages.nixfmt-rfc-style;
-        _module.args = let
-          overlays = [
-            # force downgrade Avante version to v0.0.16 due to bug
-            # https://github.com/yetone/avante.nvim/issues/1234
-            (final: prev: {
-              vimPlugins = prev.vimPlugins.extend (_: p: {
-                avante-nvim = p.avante-nvim.overrideAttrs (_: {
-                  src = prev.fetchFromGitHub {
-                    owner = "yetone";
-                    repo = "avante.nvim";
-                    rev = "v0.0.16";
-                    hash =
-                      "sha256-JTuVq5fil2bpkptpw+kj0PFOp9Rk7RpOxc0GN/blL6M=";
-                  };
-                });
-              });
-            })
-          ] ++ lib.attrValues self.overlays;
-          icons = import ./modules/nix/icons.nix;
-          colors = import ./modules/nix/colors.nix { inherit lib; };
-          color = colors.mkColor colors.lists.edge;
-        in rec {
-          inherit icons colors color;
-          # the nix package manager configurations and settings.
-          nix = import ./nix.nix {
-            inherit lib inputs inputs';
-            inherit (pkgs) stdenv;
-          } // {
-            package = branches.master.nix;
-          };
-
-          pkgs = import inputs.nixpkgs {
-            inherit system;
-            inherit (nixpkgs) config;
-            inherit overlays;
-          };
-
-          # nixpkgs (channel) configuration (not the flake input)
-          nixpkgs = {
-            config = lib.mkForce {
-              allowBroken = true;
-              allowUnfree = true;
-              tarball-ttl = 0;
-
-              # Experimental options, disable if you don't know what you are doing!
-              contentAddressedByDefault = false;
-            };
-
-            hostPlatform = system;
-
-            overlays = lib.mkForce overlays;
-          };
-
-          /* One can access these nixpkgs branches like so:
-
-             `branches.stable.mpd'
-             `branches.master.linuxPackages_xanmod'
-          */
-          branches = let
-            pkgsFrom = branch: system:
-              import branch {
-                inherit system;
-                inherit (nixpkgs) config;
-              };
-          in {
-            master = pkgsFrom inputs.nixpkgs-master system;
-            stable = pkgsFrom inputs.nixpkgs-stable system;
-            stable-24 = pkgsFrom inputs.nixpkgs-stable-24 system;
-            unstable = pkgsFrom inputs.nixpkgs-unstable system;
-          };
-
-          /* Extra arguments passed to the module system for:
-
-             `nix-darwin`
-             `NixOS`
-             `home-manager`
-          */
-          extraModuleArgs = {
-            inherit inputs' system branches colors color icons;
-            inputs = lib.mkForce inputs;
-          };
-
-          # NixOS and nix-darwin base environment.systemPackages
-          basePackagesFor = pkgs:
-            builtins.attrValues {
-              inherit (pkgs) vim curl fd wget git;
-
-              home-manager =
-                inputs'.home-manager.packages.home-manager.override {
-                  path = "${inputs.home-manager}";
-                };
-            };
-        };
-      };
+      systems = [ "x86_64-linux" "aarch64-linux" "aarch64-darwin" ];
     };
 }

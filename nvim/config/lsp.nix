@@ -1,10 +1,4 @@
-{
-  pkgs,
-  helpers,
-  system,
-  icons,
-  ...
-}:
+{ pkgs, helpers, system, icons, ... }:
 
 {
   highlightOverride.LspInlayHint.link = "InclineNormalNc";
@@ -12,6 +6,7 @@
   extraPackages = with pkgs; [
     nixfmt-classic
     manix
+    typescript-language-server
   ];
 
   extraPlugins = with pkgs.vimPlugins; [
@@ -24,17 +19,10 @@
 
   # make custom command
   userCommands.LspInlay.desc = "Toggle Inlay Hints";
-  userCommands.LspInlay.command.__raw =
-    helpers.mkLuaFun
-      # lua
-      ''
-        vim.lsp.inlay_hint.enable(not vim.lsp.inlay_hint.is_enabled())
-      '';
-
-  extraConfigLuaPost = # lua
+  userCommands.LspInlay.command.__raw = helpers.mkLuaFun
+    # lua
     ''
-      -- ft:rust didn't respect my tabstop=2 - I love you but not me
-      vim.g.rust_recommended_style = false
+      vim.lsp.inlay_hint.enable(not vim.lsp.inlay_hint.is_enabled())
     '';
 
   filetype.extension = { };
@@ -164,27 +152,32 @@
     }
     {
       __unkeyed-1 = "fic";
-      __unkeyed-2 = "<cmd>lua require'telescope.builtin'.lsp_incoming_calls()<cr>";
+      __unkeyed-2 =
+        "<cmd>lua require'telescope.builtin'.lsp_incoming_calls()<cr>";
 
     }
     {
       __unkeyed-1 = "foc";
-      __unkeyed-2 = "<cmd>lua require'telescope.builtin'.lsp_outgoing_calls()<cr>";
+      __unkeyed-2 =
+        "<cmd>lua require'telescope.builtin'.lsp_outgoing_calls()<cr>";
       desc = "[Lsp] Find Outgoing Calls";
     }
     {
       __unkeyed-1 = "fds";
-      __unkeyed-2 = "<cmd>lua require'telescope.builtin'.lsp_document_symbols()<cr>";
+      __unkeyed-2 =
+        "<cmd>lua require'telescope.builtin'.lsp_document_symbols()<cr>";
       desc = "[Lsp] Find Document Symbols";
     }
     {
       __unkeyed-1 = "fws";
-      __unkeyed-2 = "<cmd>lua require'telescope.builtin'.lsp_workspace_symbols()<cr>";
+      __unkeyed-2 =
+        "<cmd>lua require'telescope.builtin'.lsp_workspace_symbols()<cr>";
       desc = "[Lsp] Find Workspace Symbols";
     }
     {
       __unkeyed-1 = "fdws";
-      __unkeyed-2 = "<cmd>lua require'telescope.builtin'.lsp_dynamic_workspace_symbols()<cr>";
+      __unkeyed-2 =
+        "<cmd>lua require'telescope.builtin'.lsp_dynamic_workspace_symbols()<cr>";
       desc = "[Lsp] Find Dynamic Workspace Symbols";
     }
     {
@@ -194,7 +187,8 @@
     }
     {
       __unkeyed-1 = "fli";
-      __unkeyed-2 = "<cmd>lua require'telescope.builtin'.lsp_implementations()<cr>";
+      __unkeyed-2 =
+        "<cmd>lua require'telescope.builtin'.lsp_implementations()<cr>";
       desc = "[Lsp] Find Implementations";
     }
     {
@@ -204,7 +198,8 @@
     }
     {
       __unkeyed-1 = "flt";
-      __unkeyed-2 = "<cmd>lua require'telescope.builtin'.lsp_type_definitions()<cr>";
+      __unkeyed-2 =
+        "<cmd>lua require'telescope.builtin'.lsp_type_definitions()<cr>";
       desc = "[Lsp] Find Type Definitions";
     }
   ];
@@ -224,38 +219,36 @@
       '';
   };
 
-  autoCmd = [
-    {
-      event = [ "LspAttach" ];
-      callback.__raw = # lua
-        ''
-          function()
-            local bufnr = vim.api.nvim_get_current_buf()
-            local clients = vim.lsp.buf_get_clients()
-            local is_biome_active = function()
-              for _, client in ipairs(clients) do
-                if client.name == "biome" and client.attached_buffers[bufnr] then
-                  return true
-                end
-              end
-              return false
-            end
-
+  autoCmd = [{
+    event = [ "LspAttach" ];
+    callback.__raw = # lua
+      ''
+        function()
+          local bufnr = vim.api.nvim_get_current_buf()
+          local clients = vim.lsp.buf_get_clients()
+          local is_biome_active = function()
             for _, client in ipairs(clients) do
-              if is_biome_active() then
-                if client.name == "typescript-tools" or client.name == "jsonls" then
-                  client.server_capabilities.documentFormattingProvider = false
-                  client.server_capabilities.documentRangeFormattingProvider = false
-                end
-                if client.name == "eslint" then
-                  client.stop()
-                end
+              if client.name == "biome" and client.attached_buffers[bufnr] then
+                return true
+              end
+            end
+            return false
+          end
+
+          for _, client in ipairs(clients) do
+            if is_biome_active() then
+              if client.name == "typescript-tools" or client.name == "jsonls" then
+                client.server_capabilities.documentFormattingProvider = false
+                client.server_capabilities.documentRangeFormattingProvider = false
+              end
+              if client.name == "eslint" then
+                client.stop()
               end
             end
           end
-        '';
-    }
-  ];
+        end
+      '';
+  }];
 
   plugins.lsp = {
     enable = true;
@@ -316,7 +309,7 @@
       eslint.enable = true;
       eslint.autostart = true;
 
-      ts_ls.enable = false;
+      ts_ls.enable = true;
       ts_ls.autostart = false;
       ts_ls.rootDir = # lua
         ''
@@ -325,7 +318,8 @@
 
       gopls.enable = true;
       gopls.autostart = true;
-      gopls.rootDir = ''require("lspconfig.util").root_pattern("go.work", "go.mod", ".git")'';
+      gopls.rootDir =
+        ''require("lspconfig.util").root_pattern("go.work", "go.mod", ".git")'';
       gopls.extraOptions.settings.gopls.hints = {
         assignVariableTypes = true;
         compositeLiteralFields = true;
@@ -335,15 +329,12 @@
         parameterNames = true;
         rangeVariableTypes = true;
       };
-      gopls.extraOptions.settings.gopls.analyses = {
-        unusedparams = true;
-      };
+      gopls.extraOptions.settings.gopls.analyses = { unusedparams = true; };
       gopls.extraOptions.settings.gopls.staticcheck = true;
       gopls.extraOptions.settings.gopls.gofumpt = true;
       gopls.extraOptions.settings.gopls.codelenses = {
         usePlaceholders = true;
       };
-
 
       hls.enable = true;
       hls.autostart = true;
@@ -359,11 +350,9 @@
         schemas = [
           {
             description = "nixd schema";
-            fileMatch = [
-              ".nixd.json"
-              "nixd.json"
-            ];
-            url = "https://raw.githubusercontent.com/nix-community/nixd/main/nixd/docs/nixd-schema.json";
+            fileMatch = [ ".nixd.json" "nixd.json" ];
+            url =
+              "https://raw.githubusercontent.com/nix-community/nixd/main/nixd/docs/nixd-schema.json";
           }
           {
             description = "Turbo.build configuration file";
@@ -372,24 +361,8 @@
           }
           {
             description = "TypeScript compiler configuration file";
-            fileMatch = [
-              "tsconfig.json"
-              "tsconfig.*.json"
-            ];
+            fileMatch = [ "tsconfig.json" "tsconfig.*.json" ];
             url = "https://json.schemastore.org/tsconfig.json";
-          }
-          {
-            description = "ReScript compiler schema";
-            fileMatch = [
-              "bsconfig.json"
-              "rescript.json"
-            ];
-            url = "https://raw.githubusercontent.com/rescript-lang/rescript-compiler/87d78697d7a1eed75c9de55bbdc476540d6f77bb/docs/docson/build-schema.json";
-          }
-          {
-            description = "ReScript v11 compiler schema ";
-            fileMatch = [ "rescript.json" ];
-            url = "https://raw.githubusercontent.com/rescript-lang/rescript-compiler/master/docs/docson/build-schema.json";
           }
         ];
       };
@@ -415,15 +388,13 @@
       nixd.settings = {
         nixpkgs.expr = "import <nixpkgs> { }";
         formatting.command = [ "nixfmt" ];
-        options =
-          let
-            flake = ''(builtins.getFlake "${./../..}")'';
-          in
-          rec {
-            # nix-darwin.expr = ''${flake}.darwinConfigurations.eR17x.options'';
-            home-manager.expr = ''${system}.home-manager.users.type.getSubOptions []'';
-            nixvim.expr = ''${flake}.packages.${system}.nvim.options'';
-          };
+        options = let flake = ''(builtins.getFlake "${./../..}")'';
+        in {
+          # nix-darwin.expr = ''${flake}.darwinConfigurations.eR17x.options'';
+          home-manager.expr =
+            "${system}.home-manager.users.type.getSubOptions []";
+          nixvim.expr = "${flake}.packages.${system}.nvim.options";
+        };
       };
 
       yamlls.enable = true;

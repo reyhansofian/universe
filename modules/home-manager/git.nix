@@ -1,4 +1,5 @@
 {
-  git.enable = true;
-  git.extraConfig.diff.sopsdiffer.textconv = "sops -d --config /dev/null";
+  programs.git.enable = true;
+  programs.git.extraConfig.diff.sopsdiffer.textconv =
+    "sops -d --config /dev/null";
 }

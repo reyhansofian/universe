@@ -15,5 +15,6 @@
 
   environment.systemPackages = [
     pkgs.kitty # required for the default Hyprland config
+    pkgs.hyprpaper
   ];
 }

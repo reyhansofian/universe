@@ -1,17 +1,24 @@
-{ pkgs, ezModules, self, inputs, ... }: {
-  imports = with ezModules; [
-    fonts
-    k8s
-    packages
-    shell
-    ssh
-    programs
-    inputs.sops.homeManagerModules.sops
-  ];
+{ pkgs, ezModules, self, inputs, lib, osConfig, ... }: {
+  imports = with ezModules;
+    [
+      fonts
+      k8s
+      packages
+      shell
+      ssh
+      programs
+      tmux
+      inputs.sops.homeManagerModules.sops
+    ] ++ lib.optionals (osConfig.networking.hostName == "nixos-asus")
+    [ hyprland ];
 
   home = {
     username = "reyhan";
-    packages = [ self.packages.${pkgs.stdenv.system}.nvim pkgs.sops ];
+    packages = [
+      self.packages.${pkgs.stdenv.system}.nvim
+      pkgs.sops
+      pkgs.branches.master.claude-code
+    ];
     stateVersion = "25.05";
     sessionPath = [ "~/.local/bin" ];
     homeDirectory = "/home/reyhan";
@@ -26,10 +33,6 @@
     open_api_key = { };
     anthropic_api_key = { };
   };
-  sops.secrets."${self}/modules/secrets/secret.yml" = {
-    # there is also `reloadUnits` which acts like a `reloadTrigger` in a NixOS systemd service
-    restartUnits = [ "home-manager-reyhan.service" ];
-  };
 
   services = {
     gpg-agent = {
@@ -38,7 +41,7 @@
     };
   };
 
-  systemd.user.services.mbsync.Unit.After = [ "sops-nix.service" ];
+  # systemd.user.services.mbsync.Unit.After = [ "sops-nix.service" ];
   systemd.user.services.rerun-sops-nix = {
     Unit = {
       Description = "sops-nix re-activation";

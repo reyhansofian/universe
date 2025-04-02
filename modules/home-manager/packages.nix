@@ -26,6 +26,7 @@
       git
 
       unzip
+      kittysay
     ] ++ lib.optionals pkgs.stdenv.isDarwin [
       # Add packages only for Darwin (MacOS)
     ] ++ lib.optionals pkgs.stdenv.isLinux [
