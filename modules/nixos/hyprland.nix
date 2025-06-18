@@ -14,6 +14,7 @@
   environment.systemPackages = with pkgs; [
     lshw
     kitty
+    ghostty
     alsa-utils
     morewaita-icon-theme
     adwaita-icon-theme
@@ -65,19 +66,19 @@
     package = pkgs.gnomeExtensions.gsconnect;
   };
 
-  services.xserver = {
+  services = {
     displayManager.gdm.enable = true;
     desktopManager.gnome.enable = true;
   };
 
-  programs.dconf.enable = true;
-  programs.dconf.profiles.gdm.databases = [{
-    settings = {
-      "org/gnome/desktop/peripherals/touchpad" = { tap-to-click = true; };
-      "org/gnome/desktop/interface" = { cursor-theme = "Qogir"; };
-    };
-  }];
-  services.xserver.displayManager.startx.enable = true;
+  # programs.dconf.enable = true;
+  # programs.dconf.profiles.gdm.databases = [{
+  #   settings = {
+  #     "org/gnome/desktop/peripherals/touchpad" = { tap-to-click = true; };
+  #     "org/gnome/desktop/interface" = { cursor-theme = "Qogir"; };
+  #   };
+  # }];
+  # services.xserver.displayManager.startx.enable = true;
 
   services.logind.extraConfig = ''
     HandlePowerKey=ignore

@@ -32,5 +32,11 @@
     ] ++ lib.optionals pkgs.stdenv.isLinux [
       # Add packages only for Linux
       xclip
+      bruno
+
+      openvpn
+      networkmanager-openvpn
+
+      redis
     ];
 }

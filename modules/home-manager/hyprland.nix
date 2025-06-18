@@ -1,6 +1,5 @@
 { pkgs, lib, config, inputs, ... }:
 let
-
   wallpapers = {
     waterfall = pkgs.nixos-artwork.wallpapers.waterfall.gnomeFilePath;
     catMacchiato =
@@ -10,10 +9,6 @@ let
       pkgs.nixos-artwork.wallpapers.nineish-solarized-light.gnomeFilePath;
   };
   listWallpapers = lib.attrValues wallpapers;
-  # "bind" = [
-  #   "SUPER,1,workspace,1" # Superkey + 1 switches to workspace 1
-  #   "SUPER,1,exec,$w1" # SuperKey + 1 switches to wallpaper $w1 on DP-1 as defined in the variable
-  # ];
 
   toHyprpaperBind = lib.lists.flatten (lib.lists.imap1 (i: v: [
     "SUPER,${toString i},workspace,${toString i}"
@@ -30,24 +25,21 @@ in {
     [
       # hy3
       # hyprgrass
-      (hyprbars.overrideAttrs {
-        src = (pkgs.fetchFromGitHub {
-          owner = "hyprwm";
-          repo = "hyprland-plugins";
-          rev = "eefa87d099bac625234b9e89ed67624efea0d27a";
-          hash = "sha256-IGp1AcZvYZ/R+AO0Znd+i+eQuEnQfkg/6AshoYPyUIg=";
-        }) + "/hyprbars";
-      })
+      hyprbars
       # hyprtrails
     ];
 
   home.sessionVariables = {
     WLR_NO_HARDWARE_CURSORS = "1";
     WLR_RENDERER_ALLOW_SOFTWARE = "1";
+    NIXOS_OZONE_WL = "1";
     CLUTTER_BACKEND = "wayland";
     XDG_CURRENT_DESKTOP = "Hyprland";
     XDG_SESSION_DESKTOP = "Hyprland";
     XDG_SESSION_TYPE = "wayland";
+    XDG_PICTURES_DIR = "/home/reyhan/Pictures/";
+    EDITOR = "nvim";
+    BROWSER = "google-chrome-stable";
   };
 
   services.hyprpaper = {
@@ -57,26 +49,6 @@ in {
       wallpaper = lib.lists.map (v: "eDP-1,${v}") listWallpapers;
     };
   };
-
-  # services.mako = let
-  #   homeIcons = "${config.home.homeDirectory}/.nix-profile/share/icons/hicolor";
-  #   homePixmaps = "${config.home.homeDirectory}/.nix-profile/share/pixmaps";
-  #   systemIcons = "/run/current-system/sw/share/icons/hicolor";
-  #   systemPixmaps = "/run/current-system/sw/share/pixmaps";
-  # in {
-  #   enable = true;
-  #   backgroundColor = "#0A0E14";
-  #   borderColor = "#53BDFA";
-  #   defaultTimeout = 30 * 1000; # millis
-  #   font = "monospace 10";
-  #   iconPath = "${homeIcons}:${systemIcons}:${homePixmaps}:${systemPixmaps}";
-  #   icons = true;
-  #   maxIconSize = 96;
-  #   maxVisible = 3;
-  #   sort = "-time";
-  #   textColor = "#B3B1AD";
-  #   width = 500;
-  # };
 
   programs.waybar = {
     enable = true;
@@ -200,6 +172,7 @@ in {
     }];
   };
 
+  wayland.windowManager.hyprland.systemd.variables = [ "--all" ];
   # Configuration is now in settings
   wayland.windowManager.hyprland.settings = (lib.pipe listWallpapers [
     (lib.lists.imap1 (i: v: {
@@ -209,19 +182,26 @@ in {
     }))
     (lib.attrsets.zipAttrsWith (_: v: v))
   ]) // {
-    "exec-once" = [ "$w1" "${lib.getExe pkgs.waybar}" "nm-applet" "$terminal" ];
+    "exec-once" = [
+      "$w1"
+      "${lib.getExe pkgs.waybar}"
+      "nm-applet"
+      "blueman-applet"
+      "$terminal"
+      "${lib.getExe pkgs.fnott}"
+    ];
 
     monitor = [ "eDPI-1,2880x1800@90,auto,1" ];
 
-    "$terminal" = "kitty";
+    "$terminal" = "ghostty";
     "$fileManager" = "nautilus";
     "$menu" = "wofi --show drun";
 
     env = [ "XCURSOR_SIZE,24" "HYPRCURSOR_SIZE,24" ];
 
     general = {
-      gaps_in = 5;
-      gaps_out = 20;
+      gaps_in = 1;
+      gaps_out = 10;
       border_size = 2;
       "col.active_border" = "rgba(33ccffee) rgba(00ff99ee) 45deg";
       "col.inactive_border" = "rgba(595959aa)";
@@ -303,12 +283,12 @@ in {
       kb_layout = "us";
       kb_variant = "";
       kb_model = "";
-      kb_options = "";
+      kb_options = "caps:swapescape";
       kb_rules = "";
       follow_mouse = 1;
       sensitivity = 0;
 
-      touchpad = { natural_scroll = false; };
+      touchpad = { natural_scroll = true; };
     };
 
     gestures = {
@@ -331,6 +311,7 @@ in {
       "$mainMod, R, exec, $menu"
       "$mainMod, P, pseudo,"
       "$mainMod, J, togglesplit,"
+      "$mainMod, F, fullscreen, toggle,"
       "$mainMod, left, movefocus, l"
       "$mainMod, right, movefocus, r"
       "$mainMod, up, movefocus, u"
@@ -359,6 +340,12 @@ in {
       "$mainMod SHIFT, S, movetoworkspace, special:magic"
       "$mainMod, mouse_down, workspace, e+1"
       "$mainMod, mouse_up, workspace, e-1"
+      # Screenshot a window
+      "$mainMod, PRINT, exec, hyprshot -m window"
+      # Screenshot a monitor
+      ", PRINT, exec, hyprshot -m output"
+      # Screenshot a region
+      "$mainMod SHIFT, PRINT, exec, hyprshot -m region --clipboard-only"
     ] ++ toHyprpaperBind;
 
     bindel = [
@@ -388,7 +375,7 @@ in {
       "float, class:^(org.gnome.Settings)$"
       "float, class:^(xdg-desktop-portal)$"
       "float, class:^(xdg-desktop-portal-gnome)$"
-      "float, fullscreen:1, class:^(chrome)$"
+      "float, fullscreen:1, class:^(Google-Chrome)$"
       "float, fullscreen:1, class:^(firefox)$"
       "suppressevent maximize, class:.*"
       "nofocus,class:^$,title:^$,xwayland:1,floating:1,fullscreen:0,pinned:0"
@@ -398,18 +385,18 @@ in {
 
     "plugin" = {
       "hyprbars" = {
-        "bar_height" = 38;
+        "bar_height" = 28;
         "bar_color" = "rgb(1e1e1e)";
-        "bar_text_size" = 12;
-        "bar_button_padding" = 12;
+        "bar_text_size" = 11;
+        "bar_button_padding" = 11;
         "bar_padding" = 10;
         "bar_precedence_over_border" = true;
-        hyperbars-button = [
-          "rgb(ff4040), 10, 󰖭, 20, hyprctl dispatch killactive"
-          "rgb(eeee11), 10, ,, hyprctl dispatch fullscreen 1"
-          "rgb(a9a9a9), 10, , hyprctl dispatch togglefloating"
-          "rgb(a9a9a9), 10, ,, hyprctl dispatch movetoworkspacesilent special:MinimizedApps"
-        ];
+        # hyperbars-button = [
+        #   "rgb(ff4040), 10, 󰖭, 20, hyprctl dispatch killactive"
+        #   "rgb(eeee11), 10, ,, hyprctl dispatch fullscreen 1"
+        #   "rgb(a9a9a9), 10, , hyprctl dispatch togglefloating"
+        #   "rgb(a9a9a9), 10, ,, hyprctl dispatch movetoworkspacesilent special:MinimizedApps"
+        # ];
       };
     };
   };

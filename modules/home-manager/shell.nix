@@ -12,10 +12,13 @@
     oh-my-zsh.plugins = [ "git" "ssh-agent" ];
     oh-my-zsh.theme = "robbyrussell";
 
-    initExtraBeforeCompInit = ''
+    initContent = lib.mkOrder 550 ''
       # p10k instant prompt
       P10K_INSTANT_PROMPT="$XDG_CACHE_HOME/p10k-instant-prompt-''${(%):-%n}.zsh"
       [[ ! -r "$P10K_INSTANT_PROMPT" ]] || source "$P10K_INSTANT_PROMPT"
+      ZSH_AUTOSUGGEST_STRATEGY=(completion history)
+      export VAGRANT_WSL_ENABLE_WINDOWS_ACCESS="1"
+      export PATH="$PATH:/mnt/e/VirtualBox"
     '';
 
     loginExtra = ''
@@ -56,10 +59,5 @@
       k = "kubectl";
     };
 
-    initExtra = ''
-      ZSH_AUTOSUGGEST_STRATEGY=(completion history)
-      export VAGRANT_WSL_ENABLE_WINDOWS_ACCESS="1"
-      export PATH="$PATH:/mnt/e/VirtualBox"
-    '';
   };
 }

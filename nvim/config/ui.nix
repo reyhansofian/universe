@@ -98,10 +98,10 @@ in {
 
   ];
 
-  plugins.image.enable = true;
-  plugins.image.integrations.neorg.enabled = true;
-  plugins.image.editorOnlyRenderWhenFocused = true;
-  plugins.image.tmuxShowOnlyInActiveWindow = true;
+  plugins.image.settings.enable = true;
+  plugins.image.settings.integrations.neorg.enabled = true;
+  plugins.image.settings.editorOnlyRenderWhenFocused = true;
+  plugins.image.settings.tmuxShowOnlyInActiveWindow = true;
 
   plugins.presence-nvim.enable = true;
   plugins.presence-nvim.enableLineNumber = true;

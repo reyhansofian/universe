@@ -1,14 +1,18 @@
 { lib, helpers, icons, ... }:
 
 rec {
-  plugins.copilot-lua.enable = true;
-  plugins.copilot-lua.settings.suggestion.enabled = false;
-  plugins.copilot-lua.settings.panel.enabled = false;
-  plugins.codeium-nvim.enable = true;
+  # plugins.copilot-lua.enable = true;
+  # plugins.copilot-lua.settings.suggestion.enabled = false;
+  # plugins.copilot-lua.settings.panel.enabled = false;
+  # plugins.windsurf-nvim.enable = true;
   # plugins.codeium-nvim.settings.config_path.__raw = # lua
   #   ''
   #     vim.env.HOME .. '/.config/sops-nix/secrets/codeium'
   #   '';
+
+  plugins.claude-code.enable = true;
+  plugins.neotest.enable = true;
+  plugins.neotest.adapters.plenary.enable = true;
 
   autoCmd = [{
     # Disable cmp in neorepl
@@ -20,9 +24,9 @@ rec {
       '';
   }];
 
-  plugins.cmp.settings.sources =
-    lib.optionals plugins.codeium-nvim.enable [{ name = "codeium"; }]
-    ++ lib.optionals plugins.copilot-lua.enable [{ name = "copilot"; }];
+  # plugins.cmp.settings.sources =
+  #   lib.optionals plugins.windsurf-nvim.enable [{ name = "windsurf"; }]
+  #   ++ lib.optionals plugins.copilot-lua.enable [{ name = "copilot"; }];
 
   plugins.which-key.settings.spec = [
 

@@ -17,7 +17,13 @@
     packages = [
       self.packages.${pkgs.stdenv.system}.nvim
       pkgs.sops
-      pkgs.branches.master.claude-code
+      pkgs.claude-code
+      pkgs.comma
+    ] ++ lib.optionals (osConfig.networking.hostName == "nixos-asus") [
+      pkgs._1password-cli
+      pkgs._1password-gui
+      pkgs.hyprshot
+      pkgs.fnott
     ];
     stateVersion = "25.05";
     sessionPath = [ "~/.local/bin" ];
@@ -37,27 +43,45 @@
   services = {
     gpg-agent = {
       enable = true;
-      pinentryPackage = pkgs.pinentry-tty;
+      pinentry.package = pkgs.pinentry-tty;
     };
+  } // lib.optionalAttrs (osConfig.networking.hostName == "nixos-asus") {
+    blueman-applet.enable = true;
   };
+
+  systemd.user.services.docker-socket =
+    lib.optionalAttrs (osConfig.networking.hostName == "nixos-asus") {
+      Unit = {
+        Description = "Docker Socket";
+        # Requires = [ "docker.service" ];
+        After = [ "docker.service" ];
+      };
+      Service = {
+        Type = "oneshot";
+        RemainAfterExit = true;
+        ExecStart = "${pkgs.coreutils}/bin/chmod 666 /var/run/docker.sock";
+      };
+      Install = { WantedBy = [ "default.target" ]; };
+    };
 
   # systemd.user.services.mbsync.Unit.After = [ "sops-nix.service" ];
-  systemd.user.services.rerun-sops-nix = {
-    Unit = {
-      Description = "sops-nix re-activation";
-      After = "sops-nix.service";
-      Requires = "gpg-agent.service";
-    };
+  systemd.user.services.rerun-sops-nix =
+    lib.optionalAttrs (osConfig.networking.hostName != "nixos-asus") {
+      Unit = {
+        Description = "sops-nix re-activation";
+        After = "sops-nix.service";
+        Requires = "gpg-agent.service";
+      };
 
-    Install = { WantedBy = [ "default.target" "multi-user.target" ]; };
+      Install = { WantedBy = [ "default.target" "multi-user.target" ]; };
 
-    Service = {
-      Type = "oneshot";
-      ExecStart = ''
-        ${
-          pkgs.lib.getExe pkgs.bash
-        } -c "systemctl restart --user sops-nix.service"
-      '';
+      Service = {
+        Type = "oneshot";
+        ExecStart = ''
+          ${
+            pkgs.lib.getExe pkgs.bash
+          } -c "systemctl restart --user sops-nix.service"
+        '';
+      };
     };
-  };
 }

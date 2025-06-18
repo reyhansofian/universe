@@ -8,7 +8,7 @@
 
     sourceSelector = {
       winbar = true;
-      contentLayout = "focus";
+      contentLayout = "start";
       sources = [
         {
           source = "filesystem";

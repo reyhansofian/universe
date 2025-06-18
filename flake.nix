@@ -140,7 +140,6 @@
         nixos.modulesDirectory = ./modules/nixos;
         nixos.hosts = {
           desktop = { userHomeModules = [ "reyhan" ]; };
-
           wsl = { userHomeModules = [ "reyhan" ]; };
         };
 

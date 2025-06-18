@@ -52,6 +52,9 @@
       '';
     };
   };
+
+  # Bluetooth
+  services.blueman.enable = true;
   services.pipewire = {
     enable = true;
     wireplumber.enable = true;

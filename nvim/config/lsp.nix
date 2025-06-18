@@ -1,6 +1,4 @@
-{ pkgs, helpers, system, icons, ... }:
-
-{
+{ pkgs, helpers, system, icons, ... }: {
   highlightOverride.LspInlayHint.link = "InclineNormalNc";
 
   extraPackages = with pkgs; [
@@ -311,14 +309,14 @@
 
       ts_ls.enable = true;
       ts_ls.autostart = false;
-      ts_ls.rootDir = # lua
+      ts_ls.extraOptions.root_dir = # lua
         ''
           require('lspconfig.util').root_pattern('.git')
         '';
 
       gopls.enable = true;
       gopls.autostart = true;
-      gopls.rootDir =
+      gopls.extraOptions.root_dir =
         ''require("lspconfig.util").root_pattern("go.work", "go.mod", ".git")'';
       gopls.extraOptions.settings.gopls.hints = {
         assignVariableTypes = true;
@@ -374,14 +372,6 @@
       rust_analyzer.autostart = true;
       rust_analyzer.installCargo = false;
       rust_analyzer.installRustc = false;
-
-      ocamllsp.enable = true;
-      ocamllsp.autostart = true;
-      ocamllsp.package = pkgs.ocamlPackages.ocaml-lsp;
-      ocamllsp.settings.codelens.enable = false;
-      ocamllsp.settings.extendedHover.enable = true;
-      ocamllsp.settings.duneDiagnostics.enable = false;
-      ocamllsp.settings.inlayHints.enable = true;
 
       nixd.enable = true;
       nixd.autostart = true;

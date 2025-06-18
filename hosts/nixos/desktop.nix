@@ -1,12 +1,16 @@
 { lib, pkgs, inputs, ezModules, ... }: {
   imports = with ezModules; [ desktop-hardware hyprland ];
 
-  # # Bootloader.
+  # Bootloader.
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
 
   system.stateVersion = "25.05";
   nixpkgs.hostPlatform = "x86_64-linux";
+
+  # Enable the unfree 1Password packages
+  nixpkgs.config.allowUnfreePredicate = pkg:
+    builtins.elem (lib.getName pkg) [ "1password-gui" "1password" ];
 
   home-manager.useGlobalPkgs = true;
   home-manager.useUserPackages = true;
@@ -40,20 +44,57 @@
   # Install firefox.
   programs.firefox.enable = true;
 
-  # programs.waybar.enable = true;
+  # Install 1Password
+  programs._1password.enable = true;
+  programs._1password-gui = {
+    enable = true;
+    # Certain features, including CLI integration and system authentication support,
+    # require enabling PolKit integration on some desktop environments (e.g. Plasma).
+    polkitPolicyOwners = [ "computecoholic" ];
+  };
 
-  # virtualisation.virtualbox.host.enable = true;
-  # virtualisation.virtualbox.host.enableExtensionPack = true;
+  virtualisation.docker = {
+    enable = true;
+    daemon.settings = {
+      # Configure Docker to use overlay2 storage driver
+      storage-driver = "overlay2";
+
+      # Define default address pools for networks
+      # default-address-pools = [
+      #   {
+      #     base = "172.16.0.0/16";
+      #     size = 24;
+      #   }
+      #   {
+      #     base = "172.17.0.0/16";
+      #     size = 24;
+      #   }
+      # ];
+
+      # Enable live restore
+      live-restore = true;
+
+      # Enable experimental features
+      experimental = false;
+    };
+  };
 
   environment.systemPackages = with pkgs;
-    [ google-chrome discord spotify networkmanagerapplet ]
+    [ google-chrome discord spotify networkmanagerapplet swappy slurp grim ]
     ++ (with pkgs.nixos-artwork.wallpapers; [ binary-black ]);
   environment.shells = with pkgs; [ zsh ];
 
-  networking.extraHosts = "192.168.0.157 ubuntu.local";
   networking.hostName = "nixos-asus";
   networking.networkmanager.enable = true;
-  networking.firewall.allowedTCPPorts = [ 22 ];
+  networking.nameservers = [
+    # Cloudflare
+    "1.1.1.1"
+    "1.0.0.1"
+    # Google
+    "8.8.8.8"
+    "8.8.4.4"
+  ];
+  networking.firewall.allowedTCPPorts = [ 22 443 943 ];
 
   fonts.fontDir.enable = true;
   fonts.packages = with pkgs; [
@@ -71,6 +112,7 @@
       PermitRootLogin = "yes";
     };
   };
+  services.logind.lidSwitch = "suspend";
 
   # Set your time zone.
   time.timeZone = "Asia/Jakarta";
@@ -115,6 +157,12 @@
     printing.enable = true;
     flatpak.enable = true;
   };
+
+  # XDG
+  xdg.portal.enable = true;
+  xdg.icons.enable = true;
+  xdg.menus.enable = true;
+  xdg.sounds.enable = true;
 
   systemd.services.battery-charge-threshold = {
     wantedBy = [ "local-fs.target" "suspend.target" ];

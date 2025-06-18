@@ -15,44 +15,43 @@
     controlMaster = "no";
     controlPath = "~/.ssh/master-%r@%n:%p";
     controlPersist = "no";
-    matchBlocks =
-      lib.optionalAttrs (osConfig.networking.hostName != "nixos-asus") {
-        "github.com" = {
-          hostname = "github.com";
-          identityFile = "~/.ssh/id_ed";
-          identitiesOnly = true;
-          user = "git";
-          extraOptions = { AddKeysToAgent = "yes"; };
-        };
-        "gitlab.com" = {
-          hostname = "gitlab.com";
-          identityFile = "~/.ssh/gitlab";
-          identitiesOnly = true;
-          user = "git";
-          extraOptions = { AddKeysToAgent = "yes"; };
-        };
-        "bitbucket.org-efish" = {
-          hostname = "bitbucket.org";
-          identityFile = "~/.ssh/efish_ed";
-          identitiesOnly = true;
-          user = "git";
-          extraOptions = { AddKeysToAgent = "yes"; };
-        };
-        "git.lauk.io" = {
-          hostname = "git.lauk.io";
-          identityFile = "~/.ssh/efish_ed";
-          identitiesOnly = true;
-          user = "git";
-          extraOptions = { AddKeysToAgent = "yes"; };
-        };
-        "ubuntu.local" = {
-          hostname = "vm.local";
-          identityFile = "~/.ssh/user-ubuntu-vm";
-          identitiesOnly = true;
-          user = "user";
-          extraOptions = { AddKeysToAgent = "yes"; };
-        };
+    matchBlocks = {
+      "github.com" = {
+        hostname = "github.com";
+        identityFile = "~/.ssh/id_ed";
+        identitiesOnly = true;
+        user = "git";
+        extraOptions = { AddKeysToAgent = "yes"; };
       };
+      "gitlab.com" = {
+        hostname = "gitlab.com";
+        identityFile = "~/.ssh/gitlab";
+        identitiesOnly = true;
+        user = "git";
+        extraOptions = { AddKeysToAgent = "yes"; };
+      };
+      "git.lauk.io" = {
+        hostname = "git.lauk.io";
+        identityFile = "~/.ssh/efish_ed";
+        identitiesOnly = true;
+        user = "git";
+        extraOptions = { AddKeysToAgent = "yes"; };
+      };
+      "ubuntu.local" = {
+        hostname = "vm.local";
+        identityFile = "~/.ssh/user-ubuntu-vm";
+        identitiesOnly = true;
+        user = "user";
+        extraOptions = { AddKeysToAgent = "yes"; };
+      };
+      "bitbucket.org-noice" = {
+        hostname = "bitbucket.org";
+        identityFile = "~/.ssh/bitbucket-noice";
+        identitiesOnly = true;
+        user = "git";
+        extraOptions = { AddKeysToAgent = "yes"; };
+      };
+    };
     extraConfig = ''
       Include config.d/*
     '';
