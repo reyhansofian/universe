@@ -50,6 +50,15 @@
           temperature = 0;
           max_tokens = 8092;
         };
+
+        claude-4 = {
+          __inherited_from = "claude";
+          endpoint = "https://api.anthropic.com";
+          model = "claude-sonnet-4-20250514";
+          api_key_name = "ANTHROPIC_API_KEY";
+          temperature = 1;
+          max_tokens = 8092;
+        };
       };
 
       # UI Configuration
