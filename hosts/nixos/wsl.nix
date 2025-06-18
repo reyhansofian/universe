@@ -23,8 +23,8 @@
     experimental-features = [ "flakes" "nix-command" ];
   };
 
-  virtualisation.virtualbox.host.enable = true;
-  virtualisation.virtualbox.host.enableExtensionPack = true;
+  # virtualisation.virtualbox.host.enable = true;
+  # virtualisation.virtualbox.host.enableExtensionPack = true;
 
   services.dbus.enable = true;
 
