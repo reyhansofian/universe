@@ -5,41 +5,39 @@
     settings = {
       # Provider Configuration
       provider = "claude";
-      openai = {
-        endpoint = "https://api.deepinfra.com/v1/openai";
-        model = "deepseek-ai/DeepSeek-R1";
-        temperature = 0;
-        max_tokens = 8092;
-        api_key_name = "OPENAI_API_KEY";
-      };
-
-      claude = {
-        endpoint = "https://api.anthropic.com";
-        model = "claude-3-7-sonnet-20250219";
-        temperature = 0;
-        max_tokens = 9116;
-        api_key_name = "ANTHROPIC_API_KEY";
-      };
-
-      copilot.model = "claude-3.5-sonnet";
-      copilot.temperature = 0;
-      copilot.max_tokens = 4096;
 
       # Vendor Models Configuration
-      vendors = rec {
+      providers = rec {
+        claude = {
+          endpoint = "https://api.anthropic.com";
+          model = "claude-3-7-sonnet-20250219";
+          extra_request_body.temperature = 0;
+          extra_request_body.max_tokens = 9116;
+          api_key_name = "ANTHROPIC_API_KEY";
+        };
+        openai = {
+          endpoint = "https://api.deepinfra.com/v1/openai";
+          model = "deepseek-ai/DeepSeek-R1";
+          extra_request_body.temperature = 0;
+          extra_request_body.max_tokens = 8092;
+          api_key_name = "OPENAI_API_KEY";
+        };
+
         deepseek-v3 = {
           __inherited_from = "openai";
           endpoint = "https://api.deepinfra.com/v1/openai";
           model = "deepseek-ai/DeepSeek-V3";
           api_key_name = "OPENAI_API_KEY";
-          temperature = 0;
-          max_tokens = 8092;
+          extra_request_body.temperature = 0;
+          extra_request_body.max_tokens = 8092;
+          disable_tools = true;
         };
 
-        qwenCoder = deepseek-v3 // { model = "Qwen/Qwen2.5-72B-Instruct"; };
+        qwenCoder = deepseek-v3 // { model = "Qwen/Qwen3-235B-A22B"; };
 
         llma-31-405b = deepseek-v3 // {
           model = "meta-llama/Meta-Llama-3.1-405B-Instruct";
+          disable_tools = true;
         };
 
         claude-35 = {
@@ -47,8 +45,9 @@
           endpoint = "https://api.anthropic.com";
           model = "claude-3-5-sonnet-20241022";
           api_key_name = "ANTHROPIC_API_KEY";
-          temperature = 0;
-          max_tokens = 8092;
+          extra_request_body.temperature = 0;
+          extra_request_body.max_tokens = 8092;
+          disable_tools = true;
         };
 
         claude-4 = {
@@ -56,8 +55,8 @@
           endpoint = "https://api.anthropic.com";
           model = "claude-sonnet-4-20250514";
           api_key_name = "ANTHROPIC_API_KEY";
-          temperature = 1;
-          max_tokens = 8092;
+          extra_request_body.temperature = 1;
+          extra_request_body.max_tokens = 8092;
         };
       };
 

@@ -30,26 +30,32 @@
   plugins.telescope.keymaps.fN.action = "manix";
 
   plugins.which-key.settings.spec = [
-    {
-      __unkeyed-1 = "<leader>r";
-      __unkeyed-2 = "<cmd>Repl<cr>";
-      desc = "Open Repl";
-    }
+    # {
+    #   __unkeyed-1 = "<leader>r";
+    #   __unkeyed-2 = "<cmd>Repl<cr>";
+    #   desc = "Open Repl";
+    # }
     {
       __unkeyed-1 = "//";
       __unkeyed-2 = "<cmd>nohlsearch<cr>";
       desc = "Clear search highlight";
     }
+    # {
+    #   __unkeyed-1 = "<leader><space>";
+    #   __unkeyed-2 = "<cmd>Lspsaga term_toggle<cr>";
+    #   desc = "Open Terminal";
+    #
+    # }
     {
-      __unkeyed-1 = "<leader><space>";
-      __unkeyed-2 = "<cmd>Lspsaga term_toggle<cr>";
-      desc = "Open Terminal";
+      __unkeyed-1 = "gx";
+      __unkeyed-2 = "<cmd>Trouble diagnostics toggle<cr>";
+      desc = "Show diagnostics";
 
     }
     {
-      __unkeyed-1 = "ge";
-      __unkeyed-2 = "<cmd>Trouble<cr>";
-      desc = "Show diagnostics";
+      __unkeyed-1 = "gX";
+      __unkeyed-2 = "<cmd>Trouble diagnostics toggle filter.buf=0<cr><cr>";
+      desc = "Show diagnostics Buffer";
 
     }
     {

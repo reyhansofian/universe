@@ -293,7 +293,7 @@ in {
   plugins.lualine.settings.theme = "edge";
   plugins.lualine.settings.options.disabled_filetypes.__unkeyed-1 = "NvimTree";
   plugins.lualine.settings.options.disabled_filetypes.statusline =
-    [ "sagaoutline" "Trouble" ];
+    [ "sagaoutline" ];
   plugins.lualine.settings.options.component_separators.left = "";
   plugins.lualine.settings.options.component_separators.right = "";
   plugins.lualine.settings.options.section_separators.left = icons.circleRight;

@@ -21,8 +21,8 @@
       export PATH="$PATH:/mnt/e/VirtualBox"
     '';
 
+    # export ANTHROPIC_API_KEY="$(<"/home/reyhan/.config/sops-nix/secrets/anthropic_api_key")"
     loginExtra = ''
-      export ANTHROPIC_API_KEY="$(<"/home/reyhan/.config/sops-nix/secrets/anthropic_api_key")"
       export OPENAI_API_KEY="$(<"/home/reyhan/.config/sops-nix/secrets/open_api_key")"
     '';
 
