@@ -58,6 +58,12 @@
         ({ lib, ... }: {
           flake = {
             overlays.default = final: prev: {
+              # Provide dummy ansible-language-server for nixvim compatibility
+              # ansible-language-server was removed from nixpkgs but nixvim still references it
+              ansible-language-server = final.runCommand "ansible-language-server-stub" {
+                meta.homepage = null;
+              } "mkdir -p $out";
+
               branches = let
                 pkgsFrom = branch: system:
                   import branch {
@@ -85,13 +91,6 @@
               };
 
               overlays = [
-                # Provide dummy ansible-language-server for nixvim compatibility
-                # ansible-language-server was removed from nixpkgs but nixvim still references it
-                (final: prev: {
-                  ansible-language-server = prev.runCommand "ansible-language-server-stub" {
-                    meta.homepage = null;
-                  } "mkdir -p $out";
-                })
                 #   (final: prev: {
                 #     vimPlugins = prev.vimPlugins.extend (_: p: {
                 #       avante-nvim = p.avante-nvim.overrideAttrs (_: {
