@@ -122,7 +122,7 @@
         # NeoTree
         {
           __unkeyed-1 = "<leader>e";
-          __unkeyed-2 = "<cmd>Neotree toggle filesystem left<cr>";
+          __unkeyed-2 = "<cmd>Neotree toggle<cr>";
           desc =  "Toggle Explorer";
         }
 
