@@ -15,6 +15,27 @@
       if not bufnr or bufnr == 0 then bufnr = vim.api.nvim_get_current_buf() end
       local buftype = vim.api.nvim_get_option_value("buftype", { buf = bufnr })
       if buftype ~= "nofile" then
+        -- Find another valid buffer to switch to before closing
+        local windows = vim.fn.win_findbuf(bufnr)
+        for _, win in ipairs(windows) do
+          -- Switch to another buffer in this window before deleting
+          vim.api.nvim_win_call(win, function()
+            local alt_buf = nil
+            -- Try to find another listed buffer
+            for _, buf in ipairs(vim.t.bufs or {}) do
+              if buf ~= bufnr and buffer_is_valid(buf) then
+                alt_buf = buf
+                break
+              end
+            end
+            -- If no other buffer found, create a new empty buffer
+            if not alt_buf then
+              alt_buf = vim.api.nvim_create_buf(true, false)
+            end
+            vim.api.nvim_win_set_buf(win, alt_buf)
+          end)
+        end
+        -- Now delete the buffer
         vim.cmd(("silent! %s %d"):format((force or buftype == "terminal") and "bdelete!" or "confirm bdelete", bufnr))
       end
 
