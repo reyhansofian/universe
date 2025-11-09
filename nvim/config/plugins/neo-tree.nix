@@ -9,6 +9,8 @@
       enable_git_status = true;
       enable_modified_markers = true;
       enable_refresh_on_write = true;
+      popup_border_style = "rounded";
+      use_popups_for_input = false;
 
       buffers = {
         follow_current_file = {
@@ -51,6 +53,7 @@
       };
 
       window = {
+        position = "left";
         width = 30;
         mappings = {
           "<space>" = "none";
