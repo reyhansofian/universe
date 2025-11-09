@@ -3,6 +3,14 @@
     enable = true;
 
     settings = {
+      default_component_configs = {
+        indent = {
+          with_expanders = true;
+          expander_collapsed = "";
+          expander_expanded = "";
+        };
+      };
+
       buffers = {
         follow_current_file = {
           enabled = true;
@@ -39,7 +47,7 @@
         follow_current_file = {
           enabled = true;
         };
-        hijack_netrw_behavior = "open_current";
+        hijack_netrw_behavior = "open_default";
         use_libuv_file_watcher = true;
         filtered_items = {
           hide_dotfiles = false;
@@ -52,6 +60,7 @@
       enable_refresh_on_write = true;
 
       window = {
+        position = "left";
         width = 30;
         mappings = {
           "<space>" = { };
