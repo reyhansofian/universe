@@ -333,6 +333,9 @@
   plugins.lsp = {
     enable = true;
 
+    # Disable lazyLoad to avoid breaking change with types.luaInline removal
+    lazyLoad.enable = false;
+
     onAttach = ''
       function onAttach(client, bufnr)
         local signature_ok, signature = pcall(require, "lsp_signature")
