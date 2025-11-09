@@ -80,11 +80,13 @@
   # }];
   # services.xserver.displayManager.startx.enable = true;
 
-  services.logind.settings.Login = ''
-    HandlePowerKey=ignore
-    HandleLidSwitch=suspend
-    HandleLidSwitchExternalPower=ignore
-  '';
+  services.logind = {
+    lidSwitch = "suspend";
+    lidSwitchExternalPower = "ignore";
+    extraConfig = ''
+      HandlePowerKey=ignore
+    '';
+  };
 
   xdg.portal = {
     enable = true;
