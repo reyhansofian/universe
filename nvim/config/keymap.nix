@@ -122,7 +122,19 @@
         # NeoTree
         {
           __unkeyed-1 = "<leader>e";
-          __unkeyed-2 = "<cmd>Neotree toggle filesystem left<cr>";
+          __unkeyed-2.__raw = ''
+            function()
+              local manager = require("neo-tree.sources.manager")
+              local state = manager.get_state("filesystem")
+              local winid = state and state.winid
+
+              if winid and vim.api.nvim_win_is_valid(winid) then
+                vim.cmd("Neotree close")
+              else
+                vim.cmd("Neotree show filesystem left")
+              end
+            end
+          '';
           desc =  "Toggle Explorer";
         }
 

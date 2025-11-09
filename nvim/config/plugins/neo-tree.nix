@@ -10,15 +10,29 @@
       enable_modified_markers = true;
       enable_refresh_on_write = true;
 
+      # Prevent Neo-tree from being replaced by other windows
+      open_files_do_not_replace_types = [ "terminal" "trouble" "qf" ];
+
+      default_component_configs = {
+        indent = {
+          with_expanders = true;
+          expander_collapsed = "";
+          expander_expanded = "";
+          expander_highlight = "NeoTreeExpander";
+        };
+      };
+
       buffers = {
         follow_current_file = {
           enabled = true;
+          leave_dirs_open = false;
         };
       };
 
       filesystem = {
         follow_current_file = {
           enabled = true;
+          leave_dirs_open = false;
         };
         hijack_netrw_behavior = "disabled";
         use_libuv_file_watcher = true;
