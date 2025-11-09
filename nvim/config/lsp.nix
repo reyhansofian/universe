@@ -635,21 +635,21 @@
   plugins.lsp-format.settings.gopls.sync = true;
 
   plugins.lspkind.enable = true;
-  plugins.lspkind.symbolMap.Codeium = icons.code;
-  plugins.lspkind.symbolMap.Copilot = icons.robotFace;
-  plugins.lspkind.symbolMap.Suggestion = icons.wand;
-  plugins.lspkind.symbolMap.TabNine = icons.face;
-  plugins.lspkind.symbolMap.Supermaven = icons.star;
-  plugins.lspkind.symbolMap.Error = icons.cross4;
-  plugins.lspkind.symbolMap.Hint = icons.hint;
-  plugins.lspkind.symbolMap.Info = icons.info2;
-  plugins.lspkind.symbolMap.Warn = icons.warning2;
-  plugins.lspkind.symbolMap.DiagnosticSignError = icons.cross4;
-  plugins.lspkind.symbolMap.DiagnosticSignHint = icons.hint;
-  plugins.lspkind.symbolMap.DiagnosticSignInfo = icons.info2;
-  plugins.lspkind.symbolMap.DiagnosticSignWarn = icons.warning2;
+  plugins.lspkind.settings.symbol_map.Codeium = icons.code;
+  plugins.lspkind.settings.symbol_map.Copilot = icons.robotFace;
+  plugins.lspkind.settings.symbol_map.Suggestion = icons.wand;
+  plugins.lspkind.settings.symbol_map.TabNine = icons.face;
+  plugins.lspkind.settings.symbol_map.Supermaven = icons.star;
+  plugins.lspkind.settings.symbol_map.Error = icons.cross4;
+  plugins.lspkind.settings.symbol_map.Hint = icons.hint;
+  plugins.lspkind.settings.symbol_map.Info = icons.info2;
+  plugins.lspkind.settings.symbol_map.Warn = icons.warning2;
+  plugins.lspkind.settings.symbol_map.DiagnosticSignError = icons.cross4;
+  plugins.lspkind.settings.symbol_map.DiagnosticSignHint = icons.hint;
+  plugins.lspkind.settings.symbol_map.DiagnosticSignInfo = icons.info2;
+  plugins.lspkind.settings.symbol_map.DiagnosticSignWarn = icons.warning2;
   plugins.lspkind.cmp.enable = true;
-  plugins.lspkind.cmp.maxWidth = 24;
+  plugins.lspkind.settings.cmp.max_width = 24;
   plugins.lspkind.cmp.after = # lua
     ''
       function(entry, vim_item, kind)
@@ -661,10 +661,10 @@
     '';
 
   plugins.lspsaga.enable = true;
-  plugins.lspsaga.lightbulb.sign = false;
-  plugins.lspsaga.lightbulb.virtualText = true;
-  plugins.lspsaga.lightbulb.debounce = 40;
-  plugins.lspsaga.ui.codeAction = icons.gearSM;
+  plugins.lspsaga.settings.lightbulb.sign = false;
+  plugins.lspsaga.settings.lightbulb.virtual_text = true;
+  plugins.lspsaga.settings.lightbulb.debounce = 40;
+  plugins.lspsaga.settings.ui.code_action = icons.gearSM;
 
   plugins.trouble.enable = true;
   plugins.wtf.enable = true;

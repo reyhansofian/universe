@@ -104,9 +104,9 @@ in {
   plugins.image.settings.editorOnlyRenderWhenFocused = true;
   plugins.image.settings.tmuxShowOnlyInActiveWindow = true;
 
-  plugins.presence-nvim.enable = true;
-  plugins.presence-nvim.enableLineNumber = true;
-  plugins.presence-nvim.autoUpdate = true;
+  plugins.presence.enable = true;
+  plugins.presence.settings.enable_line_number = true;
+  plugins.presence.settings.auto_update = true;
 
   plugins.colorizer = {
     enable = true;
@@ -158,18 +158,18 @@ in {
 
   # based on {https://github.com/r17x/nixpkgs/blob/main/configs/nvim/lua/config/nvim-tree.lua}
   plugins.nvim-tree.enable = true;
-  plugins.nvim-tree.disableNetrw = true;
-  plugins.nvim-tree.view.side = "left";
-  plugins.nvim-tree.view.width = 25;
-  plugins.nvim-tree.respectBufCwd = true;
-  plugins.nvim-tree.autoReloadOnWrite = true;
-  plugins.nvim-tree.git.enable = true;
-  plugins.nvim-tree.filters.dotfiles = false;
-  plugins.nvim-tree.renderer.highlightGit = true;
-  plugins.nvim-tree.renderer.indentMarkers.enable = true;
+  plugins.nvim-tree.settings.disable_netrw = true;
+  plugins.nvim-tree.settings.view.side = "left";
+  plugins.nvim-tree.settings.view.width = 25;
+  plugins.nvim-tree.settings.respect_buf_cwd = true;
+  plugins.nvim-tree.settings.auto_reload_on_write = true;
+  plugins.nvim-tree.settings.git.enable = true;
+  plugins.nvim-tree.settings.filters.dotfiles = false;
+  plugins.nvim-tree.settings.renderer.highlight_git = true;
+  plugins.nvim-tree.settings.renderer.indent_markers.enable = true;
 
   plugins.rainbow-delimiters.enable = true;
-  plugins.rainbow-delimiters.highlight = indentBlankLineHighlights;
+  plugins.rainbow-delimiters.settings.highlight = indentBlankLineHighlights;
 
   plugins.indent-blankline.enable = true;
   plugins.indent-blankline.settings.indent.char = "┊";

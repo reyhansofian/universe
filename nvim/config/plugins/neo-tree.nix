@@ -2,23 +2,31 @@
   plugins.neo-tree = {
     enable = true;
 
-    buffers.followCurrentFile.enabled = true;
-    autoCleanAfterSessionRestore = true;
-    closeIfLastWindow = true;
-
-    filesystem = {
-      followCurrentFile.enabled = true;
-      hijackNetrwBehavior = "open_current";
-      useLibuvFileWatcher = true;
-    };
-    filesystem.filteredItems.hideDotfiles = false;
-
-    enableDiagnostics = true;
-    enableGitStatus = true;
-    enableModifiedMarkers = true;
-    enableRefreshOnWrite = true;
-
     settings = {
+      auto_clean_after_session_restore = true;
+      close_if_last_window = true;
+      enable_diagnostics = true;
+      enable_git_status = true;
+      enable_modified_markers = true;
+      enable_refresh_on_write = true;
+
+      buffers = {
+        follow_current_file = {
+          enabled = true;
+        };
+      };
+
+      filesystem = {
+        follow_current_file = {
+          enabled = true;
+        };
+        hijack_netrw_behavior = "open_current";
+        use_libuv_file_watcher = true;
+        filtered_items = {
+          hide_dotfiles = false;
+        };
+      };
+
       source_selector = {
         winbar = true;
         content_layout = "start";
