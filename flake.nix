@@ -12,8 +12,8 @@
     nix-darwin.url = "github:LnL7/nix-darwin";
     nix-darwin.inputs.nixpkgs.follows = "nixpkgs";
 
-    home-manager.url = "github:nix-community/home-manager/release-25.05";
-    home-manager.inputs.nixpkgs.follows = "nixpkgs-stable";
+    home-manager.url = "github:nix-community/home-manager";
+    home-manager.inputs.nixpkgs.follows = "nixpkgs-unstable";
 
     flake-parts.url = "github:hercules-ci/flake-parts";
     ez-configs = {
@@ -77,11 +77,11 @@
                     inherit (inputs.self.nixpkgs) config;
                   };
               in {
-                master = pkgsFrom inputs.nixpkgs-master prev.stdenv.system;
-                stable = pkgsFrom inputs.nixpkgs-stable prev.stdenv.system;
+                master = pkgsFrom inputs.nixpkgs-master prev.stdenv.hostPlatform.system;
+                stable = pkgsFrom inputs.nixpkgs-stable prev.stdenv.hostPlatform.system;
                 stable-24 =
-                  pkgsFrom inputs.nixpkgs-stable-24 prev.stdenv.system;
-                unstable = pkgsFrom inputs.nixpkgs-unstable prev.stdenv.system;
+                  pkgsFrom inputs.nixpkgs-stable-24 prev.stdenv.hostPlatform.system;
+                unstable = pkgsFrom inputs.nixpkgs-unstable prev.stdenv.hostPlatform.system;
               };
             };
 
