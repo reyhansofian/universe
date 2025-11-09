@@ -20,7 +20,7 @@
       jq
 
       # Git
-      gitAndTools.gh
+      gh
       git-crypt
       git-lfs
       git

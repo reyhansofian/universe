@@ -12,6 +12,16 @@ let
       }];
     };
 
+    noice = {
+      session_name = "Noice - Work";
+      windows = [{
+        window_name = "Noice - Work";
+        layout = "tiled";
+        shell_command_before = [ "cd ~/Projects/Noice" ];
+        panes = [ ''kittysay --think "Happy working"'' ];
+      }];
+    };
+
     work = {
       session_name = "Work";
       windows = [{
@@ -49,6 +59,10 @@ in {
   programs.zsh.shellAliases = {
     tpass = "tmuxp load ${
         builtins.toFile "tmuxp-paas.json" (builtins.toJSON tmuxWorkspaces.paas)
+      }";
+    tnoice = "tmuxp load ${
+        builtins.toFile "tmuxp-noice.json"
+        (builtins.toJSON tmuxWorkspaces.noice)
       }";
     tmw = "tmuxp load ${
         builtins.toFile "tmuxp-work.json" (builtins.toJSON tmuxWorkspaces.work)

@@ -1,12 +1,12 @@
 let indent = 2;
 in {
   # clipboard.register = "unnamed";
-  config.keymaps = [{
-    mode = [ "n" "t" ];
-    key = "<c-space>";
-    action = "<cmd>Lspsaga term_toggle<CR>";
-    options = { desc = "Open terminal"; };
-  }];
+  # config.keymaps = [{
+  #   mode = [ "n" "t" ];
+  #   key = "<c-space>";
+  #   action = "<cmd>Lspsaga term_toggle<CR>";
+  #   options = { desc = "Open terminal"; };
+  # }];
 
   config.globals.mapleader = " ";
   config.opts = {
@@ -54,9 +54,7 @@ in {
 
     compatible = false;
 
-    # Vim fold
-    foldexpr = "nvim_treesitter#foldexpr()";
-    foldmethod = "expr";
+    # Vim fold (using nvim-ufo instead)
     foldlevel = 99;
     foldlevelstart = 99;
     foldenable = true;

@@ -13,7 +13,7 @@ let
     left = "←";
     right = "→";
     paste = "";
-    clipboard = "";
+    clipboard = "󰨸";
     save = "";
     toggle = "";
     eol = "↩";
@@ -30,9 +30,9 @@ let
     warning1 = "";
     warning2 = "";
     warning3 = "";
-    cross = "";
-    cross1 = "";
-    cross2 = "";
+    cross = "✗";
+    cross1 = "✘";
+    cross2 = "✘";
     cross3 = "";
     cross4 = "";
     plus = "";
@@ -42,15 +42,15 @@ let
     plus4 = "⊕";
     minus = "";
     minus1 = "";
-    minus2 = "";
+    minus2 = "-";
     minus3 = "";
     refresh = "";
     file = "";
     reload = "";
     bookmark = "";
-    word = "";
-    recent = "";
-    notes = "";
+    word = "󰈔";
+    recent = "󰋚";
+    notes = "󰠮";
     lightning = "";
     org = "";
     still = "";
@@ -94,9 +94,7 @@ let
     pipe = "┃";
     dot = "•";
   };
-in
-icons
-// {
+in icons // {
   withIcon = iconName: s: "${icons.${iconName}} ${s}";
   space = {
     right = i: "${icons.${i}} ";

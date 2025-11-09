@@ -51,11 +51,6 @@ in {
     nvzone-typr
   ];
 
-  plugins.lz-n.plugins = [{
-    __unkeyed-1 = "typr";
-    cmd = [ "Typr" "TyprStats" ];
-  }];
-
   userCommands.StatusLine.desc = "Toggle Status Line";
   userCommands.StatusLine.command.__raw = helpers.mkLuaFun
     # lua
@@ -94,6 +89,12 @@ in {
       __unkeyed-1 = "tc";
       __unkeyed-2 = "<cmd>ColorizerToggle<cr>";
       desc = "Toggle Colorizer";
+    }
+
+    {
+      __unkeyed-1 = "tsc";
+      __unkeyed-2 = "<cmd>SmearCursorToggle<cr>";
+      desc = "Toggle Animation Cursor";
     }
 
   ];
@@ -204,8 +205,10 @@ in {
       -- listchars=eol:↴,nbsp:+,tab:> ,trail:-
       vim.opt.listchars = "eol:${icons.eol},nbsp:+,tab:${icons.tab} ,trail:-"
 
-      -- treesitter folding
-      vim.cmd [[ set nofoldenable ]]
+      -- folding handled by nvim-ufo plugin
+
+      -- Set LSP log level to warn to reduce noise
+      vim.lsp.set_log_level("warn")
     '';
 
   # colorscheme = "onedark";
@@ -252,20 +255,7 @@ in {
     '';
   };
 
-  plugins.lz-n.enable = true;
-  plugins.smear-cursor = {
-    enable = true;
-    lazyLoad.enable = true;
-    lazyLoad.settings = {
-      event = "InsertEnter";
-      cmd = "SmearCursorToggle";
-      keys = [{
-        __unkeyed-1 = "<leader>tsc";
-        __unkeyed-2 = "<cmd>SmearCursorToggle<cr>";
-        desc = "Toggle Animation Cursor";
-      }];
-    };
-  };
+  plugins.smear-cursor.enable = true;
 
   extraConfigLuaPre = # lua
     ''
@@ -359,7 +349,6 @@ in {
   plugins.lualine.settings.extensions = [ ];
 
   plugins.treesitter.enable = true;
-  plugins.treesitter.folding = true;
   plugins.treesitter.settings.indent.enable = true;
   plugins.treesitter.settings.highlight.enable = true;
   #plugins.treesitter.nixvimInjections = true;

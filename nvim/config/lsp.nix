@@ -1,5 +1,9 @@
-{ pkgs, helpers, system, icons, ... }: {
-  highlightOverride.LspInlayHint.link = "InclineNormalNc";
+{ pkgs, helpers, system, icons, lib, ... }: {
+  highlightOverride.LspInlayHint = {
+    fg = "#8B949E"; # Light gray text
+    bg = "#21262D"; # Subtle dark background
+    italic = true; # Italic for additional distinction
+  };
 
   extraPackages = with pkgs; [
     nixfmt-classic
@@ -208,20 +212,70 @@
     }
   ];
 
-  plugins.typescript-tools.enable = true;
-  plugins.typescript-tools.settings.code_lens = "references_only";
-  plugins.typescript-tools.settings.complete_function_calls = true;
-  plugins.typescript-tools.settings.expose_as_code_action = "all";
-  plugins.typescript-tools.settings.handlers = {
-    "textDocument/publishDiagnostics" =
-      # lua
-      ''
-        require("typescript-tools.api").filter_diagnostics(
-          -- Ignore 'This may be converted to an async function' diagnostics.
-          { 80006 }
-        )
-      '';
-  };
+  # plugins.typescript-tools = {
+  #   enable = true;
+  #   settings = {
+  #     code_lens = "all";
+  #     complete_function_calls = true;
+  #     expose_as_code_action = "all";
+  #     handlers = {
+  #       "textDocument/publishDiagnostics" =
+  #         # lua
+  #         ''
+  #           require("typescript-tools.api").filter_diagnostics(
+  #             -- Ignore 'This may be converted to an async function' diagnostics.
+  #             { 80006 }
+  #           )
+  #         '';
+  #     };
+  #
+  #     # TypeScript server settings
+  #     tsserver_file_preferences = {
+  #       # Inlay hints
+  #       includeInlayParameterNameHints = "all";
+  #       includeInlayParameterNameHintsWhenArgumentMatchesName = true;
+  #       includeInlayFunctionParameterTypeHints = true;
+  #       includeInlayVariableTypeHints = true;
+  #       includeInlayVariableTypeHintsWhenTypeMatchesName = true;
+  #       includeInlayPropertyDeclarationTypeHints = true;
+  #       includeInlayFunctionLikeReturnTypeHints = true;
+  #       includeInlayEnumMemberValueHints = true;
+  #
+  #       # Import preferences
+  #       includeCompletionsForModuleExports = true;
+  #       quotePreference = "auto";
+  #
+  #       # Auto-imports
+  #       includeCompletionsForImportStatements = true;
+  #       includeCompletionsWithSnippetText = true;
+  #       includeAutomaticOptionalChainCompletions = true;
+  #     };
+  #
+  #     # Disable semantic tokens (can cause performance issues)
+  #     disable_member_code_lens = false;
+  #
+  #     # Organize imports on save
+  #     tsserver_format_options = {
+  #       allowIncompleteCompletions = false;
+  #       allowRenameOfImportPath = false;
+  #     };
+  #
+  #     onAttach = {
+  #       function = ''
+  #         -- Enable CodeLens refresh
+  #         if client.server_capabilities.codeLensProvider then
+  #           vim.api.nvim_create_autocmd({"BufEnter", "CursorHold", "InsertLeave"}, {
+  #             buffer = bufnr,
+  #             callback = vim.lsp.codelens.refresh,
+  #           })
+  #
+  #           -- Initial refresh
+  #           vim.lsp.codelens.refresh()
+  #         end
+  #       '';
+  #     };
+  #   };
+  # };
 
   autoCmd = [{
     event = [ "LspAttach" ];
@@ -239,17 +293,39 @@
             return false
           end
 
+          local is_eslint_active = function()
+            for _, client in ipairs(clients) do
+              if client.name == "eslint" and client.attached_buffers[bufnr] then
+                return true
+              end
+            end
+            return false
+          end
+
           for _, client in ipairs(clients) do
-            if is_biome_active() then
+            if is_eslint_active() then
               if client.name == "typescript-tools" or client.name == "jsonls" then
                 client.server_capabilities.documentFormattingProvider = false
                 client.server_capabilities.documentRangeFormattingProvider = false
               end
-              if client.name == "eslint" then
-                client.stop()
+              if client.name == "biome" then
+                client.server_capabilities.documentFormattingProvider = false
+                client.server_capabilities.documentRangeFormattingProvider = false
               end
             end
           end
+
+          -- for _, client in ipairs(clients) do
+          --   if is_biome_active() then
+          --     if client.name == "typescript-tools" or client.name == "jsonls" then
+          --       client.server_capabilities.documentFormattingProvider = false
+          --       client.server_capabilities.documentRangeFormattingProvider = false
+          --     end
+          --     if client.name == "eslint" then
+          --       client.stop()
+          --     end
+          --   end
+          -- end
         end
       '';
   }];
@@ -267,7 +343,7 @@
             floating_window = true,
             fix_pos = true,
             hint_enable = true,
-            hint_prefix = " ",
+            hint_prefix = "H ",
             hint_scheme = "String",
             hi_parameter = "Search",
             max_height = 22,
@@ -293,7 +369,7 @@
 
       lspSymbol("Error", "")
       lspSymbol("Info", "")
-      lspSymbol("Hint", "")
+      lspSymbol("Hint", "")
       lspSymbol("Warn", "")
     '';
 
@@ -314,38 +390,182 @@
       eslint.autostart = true;
 
       ts_ls.enable = true;
-      ts_ls.autostart = false;
-      ts_ls.extraOptions.root_dir = # lua
-        ''
-          require('lspconfig.util').root_pattern('.git')
-        '';
+      ts_ls.autostart = true;
+      ts_ls.extraOptions = {
+        init_options = {
+          preferences = {
+            # Inlay hints (similar to typescript-tools)
+            includeInlayParameterNameHints = "all";
+            includeInlayParameterNameHintsWhenArgumentMatchesName = true;
+            includeInlayFunctionParameterTypeHints = true;
+            includeInlayVariableTypeHints = true;
+            includeInlayVariableTypeHintsWhenTypeMatchesName = true;
+            includeInlayPropertyDeclarationTypeHints = true;
+            includeInlayFunctionLikeReturnTypeHints = true;
+            includeInlayEnumMemberValueHints = true;
+
+            # Import preferences
+            includeCompletionsForModuleExports = true;
+            quotePreference = "auto";
+
+            # Auto-imports and completions
+            includeCompletionsForImportStatements = true;
+            includeCompletionsWithSnippetText = true;
+            includeAutomaticOptionalChainCompletions = true;
+
+            # Display preferences for longer hints
+            displayPartsForJSDoc = true;
+            generateReturnInDocTemplate = true;
+
+            # Formatting
+            allowIncompleteCompletions = false;
+            allowRenameOfImportPath = false;
+          };
+        };
+        on_attach.__raw = # lua
+          ''
+            function(client, bufnr)
+              -- Enable inlay hints if supported
+              if client.server_capabilities.inlayHintProvider then
+                vim.lsp.inlay_hint.enable(true)
+              end
+
+              -- Enable CodeLens refresh (similar to typescript-tools)
+              if client.server_capabilities.codeLensProvider then
+                vim.api.nvim_create_autocmd({"BufEnter", "CursorHold", "InsertLeave"}, {
+                  buffer = bufnr,
+                  callback = vim.lsp.codelens.refresh,
+                })
+
+                -- Initial refresh
+                vim.lsp.codelens.refresh()
+              end
+
+              -- Format on save with Biome or ESLint preference
+              vim.api.nvim_create_autocmd("BufWritePre", {
+                group = vim.api.nvim_create_augroup("TsLspFormatting", {}),
+                buffer = bufnr,
+                callback = function()
+                  local clients = vim.lsp.get_active_clients({ bufnr = bufnr })
+                  local biome_client = nil
+                  local eslint_client = nil
+
+                  for _, c in ipairs(clients) do
+                    if c.name == "biome" then
+                      biome_client = c
+                    elseif c.name == "eslint" then
+                      eslint_client = c
+                    end
+                  end
+
+                  -- Prefer Biome, then ESLint, then ts_ls
+                  if biome_client then
+                    vim.lsp.buf.format({ name = "biome" })
+                  elseif eslint_client then
+                    vim.lsp.buf.format({ name = "eslint" })
+                  else
+                    vim.lsp.buf.format({ name = "ts_ls" })
+                  end
+                end,
+              })
+            end
+          '';
+        handlers = {
+          # Filter out specific diagnostics (similar to typescript-tools)
+          "textDocument/publishDiagnostics".__raw = # lua
+            ''
+              function(err, result, ctx, config)
+                if result and result.diagnostics then
+                  -- Filter out 'This may be converted to an async function' diagnostics
+                  result.diagnostics = vim.tbl_filter(function(diagnostic)
+                    return diagnostic.code ~= 80006
+                  end, result.diagnostics)
+                end
+                vim.lsp.diagnostic.on_publish_diagnostics(err, result, ctx, config)
+              end
+            '';
+        };
+      };
 
       gopls.enable = true;
       gopls.autostart = true;
-      gopls.extraOptions.root_dir =
-        ''require("lspconfig.util").root_pattern("go.work", "go.mod", ".git")'';
-      gopls.extraOptions.settings.gopls.hints = {
-        assignVariableTypes = true;
-        compositeLiteralFields = true;
-        compositeLiteralTypes = true;
-        constantValues = true;
-        functionTypeParameters = true;
-        parameterNames = true;
-        rangeVariableTypes = true;
-      };
-      gopls.extraOptions.settings.gopls.analyses = { unusedparams = true; };
-      gopls.extraOptions.settings.gopls.staticcheck = true;
-      gopls.extraOptions.settings.gopls.gofumpt = true;
-      gopls.extraOptions.settings.gopls.codelenses = {
-        usePlaceholders = true;
+      gopls.settings = {
+        filetypes = [ "go" ];
+        gopls = {
+          hints = {
+            assignVariableTypes = true;
+            compositeLiteralFields = true;
+            compositeLiteralTypes = true;
+            constantValues = true;
+            functionTypeParameters = true;
+            parameterNames = true;
+            rangeVariableTypes = true;
+          };
+
+          analyses = {
+            unusedparams = true;
+            unreachable = true;
+            unusedwrite = true;
+            useany = true;
+            nilness = true;
+            shadow = true;
+          };
+
+          staticcheck = true;
+          gofumpt = true;
+          codelenses = { gc_details = true; };
+
+          usePlaceholders = true;
+          completionDocumentation = true;
+          deepCompletion = true;
+          matcher = "Fuzzy";
+
+          # Semantic tokens
+          semanticTokens = true;
+
+          # Go vulncheck
+          vulncheck = "Imports";
+        };
+
+        onAttach = {
+          function = ''
+            -- Enable CodeLens refresh
+            if client.server_capabilities.codeLensProvider then
+              vim.api.nvim_create_autocmd({"BufEnter", "CursorHold", "InsertLeave"}, {
+                buffer = bufnr,
+                callback = vim.lsp.codelens.refresh,
+              })
+              vim.lsp.codelens.refresh()
+            end
+
+            -- Auto-organize imports on save
+            vim.api.nvim_create_autocmd("BufWritePre", {
+              buffer = bufnr,
+              callback = function()
+                local params = vim.lsp.util.make_range_params()
+                params.context = {only = {"source.organizeImports"}}
+                local result = vim.lsp.buf_request_sync(0, "textDocument/codeAction", params, 3000)
+                for _, res in pairs(result or {}) do
+                  for _, r in pairs(res.result or {}) do
+                    if r.edit then
+                      vim.lsp.util.apply_workspace_edit(r.edit, "utf-16")
+                    else
+                      vim.lsp.buf.execute_command(r.command)
+                    end
+                  end
+                end
+              end
+            })
+          '';
+        };
       };
 
       hls.enable = true;
       hls.autostart = true;
       hls.installGhc = false;
 
-      htmx.enable = !pkgs.stdenv.isDarwin;
-      htmx.autostart = true;
+      # htmx.enable = !pkgs.stdenv.isDarwin;
+      # htmx.autostart = true;
 
       jsonls.enable = true;
       jsonls.autostart = true;
@@ -395,6 +615,8 @@
 
       yamlls.enable = true;
       yamlls.autostart = true;
+
+      ansiblels.enable = lib.mkForce false;
     };
   };
 
