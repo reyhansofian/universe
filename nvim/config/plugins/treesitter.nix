@@ -15,51 +15,53 @@
     plugins.treesitter-textobjects = {
       enable = true;
 
-      select = {
-        enable = true;
-        lookahead = true;
+      settings = {
+        select = {
+          enable = true;
+          lookahead = true;
 
-        keymaps = {
-          "ak" = { query = "@block.outer"; desc = "around block"; };
-          "ik" = { query = "@block.inner"; desc = "inside block"; };
-          "ac" = { query = "@class.outer"; desc = "around class"; };
-          "ic" = { query = "@class.inner"; desc = "inside class"; };
-          "a?" = { query = "@conditional.outer"; desc = "around conditional"; };
-          "i?" = { query = "@conditional.inner"; desc = "inside conditional"; };
-          "af" = { query = "@function.outer"; desc = "around function "; };
-          "if" = { query = "@function.inner"; desc = "inside function "; };
-          "al" = { query = "@loop.outer"; desc = "around loop"; };
-          "il" = { query = "@loop.inner"; desc = "inside loop"; };
-          "aa" = { query = "@parameter.outer"; desc = "around argument"; };
-          "ia" = { query = "@parameter.inner"; desc = "inside argument"; };
-        };
-      };
-
-      move = {
-        enable = true;
-
-        gotoNextStart = {
-          "]k" = { query = "@block.outer"; desc = "Next block start"; };
-          "]f" = { query = "@function.outer"; desc = "Next function start"; };
-          "]a" = { query = "@parameter.inner"; desc = "Next argument start"; };
+          keymaps = {
+            "ak" = { query_group = "@block.outer"; desc = "around block"; };
+            "ik" = { query_group = "@block.inner"; desc = "inside block"; };
+            "ac" = { query_group = "@class.outer"; desc = "around class"; };
+            "ic" = { query_group = "@class.inner"; desc = "inside class"; };
+            "a?" = { query_group = "@conditional.outer"; desc = "around conditional"; };
+            "i?" = { query_group = "@conditional.inner"; desc = "inside conditional"; };
+            "af" = { query_group = "@function.outer"; desc = "around function "; };
+            "if" = { query_group = "@function.inner"; desc = "inside function "; };
+            "al" = { query_group = "@loop.outer"; desc = "around loop"; };
+            "il" = { query_group = "@loop.inner"; desc = "inside loop"; };
+            "aa" = { query_group = "@parameter.outer"; desc = "around argument"; };
+            "ia" = { query_group = "@parameter.inner"; desc = "inside argument"; };
+          };
         };
 
-        gotoNextEnd = {
-          "]K" = { query = "@block.outer"; desc = "Next block end"; };
-          "]F" = { query = "@function.outer"; desc = "Next function end"; };
-          "]A" = { query = "@parameter.inner"; desc = "Next argument end"; };
-        };
+        move = {
+          enable = true;
 
-        gotoPreviousStart = {
-          "[k" = { query = "@block.outer"; desc = "Previous block start"; };
-          "[f" = { query = "@function.outer"; desc = "Previous function start"; };
-          "[a" = { query = "@parameter.inner"; desc = "Previous argument start"; };
-        };
+          goto_next_start = {
+            "]k" = { query_group = "@block.outer"; desc = "Next block start"; };
+            "]f" = { query_group = "@function.outer"; desc = "Next function start"; };
+            "]a" = { query_group = "@parameter.inner"; desc = "Next argument start"; };
+          };
 
-        gotoPreviousEnd = {
-          "[K" = { query = "@block.outer"; desc = "Previous block end"; };
-          "[F" = { query = "@function.outer"; desc = "Previous function end"; };
-          "[A" = { query = "@parameter.inner"; desc = "Previous argument end"; };
+          goto_next_end = {
+            "]K" = { query_group = "@block.outer"; desc = "Next block end"; };
+            "]F" = { query_group = "@function.outer"; desc = "Next function end"; };
+            "]A" = { query_group = "@parameter.inner"; desc = "Next argument end"; };
+          };
+
+          goto_previous_start = {
+            "[k" = { query_group = "@block.outer"; desc = "Previous block start"; };
+            "[f" = { query_group = "@function.outer"; desc = "Previous function start"; };
+            "[a" = { query_group = "@parameter.inner"; desc = "Previous argument start"; };
+          };
+
+          goto_previous_end = {
+            "[K" = { query_group = "@block.outer"; desc = "Previous block end"; };
+            "[F" = { query_group = "@function.outer"; desc = "Previous function end"; };
+            "[A" = { query_group = "@parameter.inner"; desc = "Previous argument end"; };
+          };
         };
       };
     };

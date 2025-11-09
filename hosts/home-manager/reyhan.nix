@@ -15,7 +15,7 @@
   home = {
     username = "reyhan";
     packages = [
-      self.packages.${pkgs.stdenv.system}.nvim
+      self.packages.${pkgs.stdenv.hostPlatform.system}.nvim
       pkgs.sops
       pkgs.claude-code
       pkgs.comma

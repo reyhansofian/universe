@@ -2,68 +2,81 @@
   plugins.neo-tree = {
     enable = true;
 
-    buffers.followCurrentFile.enabled = true;
-    autoCleanAfterSessionRestore = true;
-    closeIfLastWindow = true;
+    settings = {
+      default_component_configs = {
+        indent = {
+          with_expanders = true;
+          expander_collapsed = "";
+          expander_expanded = "";
+        };
+      };
 
-    sourceSelector = {
-      winbar = true;
-      contentLayout = "start";
-      sources = [
+      buffers = {
+        follow_current_file = {
+          enabled = true;
+        };
+      };
+
+      auto_clean_after_session_restore = true;
+      close_if_last_window = true;
+
+      source_selector = {
+        winbar = true;
+        content_layout = "start";
+        sources = [
+          {
+            source = "filesystem";
+            display_name = " File";
+          }
+          {
+            source = "buffers";
+            display_name = "󰈙 Bufs";
+          }
+          {
+            source = "git_status";
+            display_name = "󰊢 Git";
+          }
+          {
+            source = "diagnostics";
+            display_name = "󰒡 Diagnostic";
+          }
+        ];
+      };
+
+      filesystem = {
+        follow_current_file = {
+          enabled = true;
+        };
+        hijack_netrw_behavior = "open_default";
+        use_libuv_file_watcher = true;
+        filtered_items = {
+          hide_dotfiles = false;
+        };
+      };
+
+      enable_diagnostics = true;
+      enable_git_status = true;
+      enable_modified_markers = true;
+      enable_refresh_on_write = true;
+
+      window = {
+        position = "right";
+        width = 30;
+        mappings = {
+          "<space>" = { };
+          "[b" = { command = "prev_source"; };
+          "]b" = { command = "next_source"; };
+        };
+      };
+
+      event_handlers = [
         {
-          source = "filesystem";
-          displayName = " File";
-        }
-        {
-          source = "buffers";
-          displayName = "󰈙 Bufs";
-        }
-        {
-          source = "git_status";
-          displayName = "󰊢 Git";
-        }
-        {
-          source = "diagnostics";
-          displayName = "󰒡 Diagnostic";
+          event = "neo_tree_buffer_enter";
+          handler.__raw = ''
+            function(_) vim.opt_local.signcolumn = "auto" end
+          '';
         }
       ];
-    };
-
-    filesystem = {
-      followCurrentFile.enabled = true;
-      hijackNetrwBehavior = "open_current";
-      useLibuvFileWatcher = true;
-    };
-    filesystem.filteredItems.hideDotfiles = false;
-
-    enableDiagnostics = true;
-    enableGitStatus = true;
-    enableModifiedMarkers = true;
-    enableRefreshOnWrite = true;
-
-    window = {
-      width = 30;
-      mappings = {
-        "<space>" = { };
-        "[b" = { command = "prev_source"; };
-        "]b" = { command = "next_source"; };
-        # "F" = {
-        #   command = ''
-        #     require("telescope.nvim") and find_in_dir or nil
-        #   '';
-        # };
-        # "O" = "system_open";
-        # "Y" = "copy_selector";
-        # "h" = "parent_or_close";
-        # "l" = "child_or_open";
-        # "o" = "open";
-      };
-    };
-
-    eventHandlers = {
-      neo_tree_buffer_enter = ''
-        function(_) vim.opt_local.signcolumn = "auto" end
-      '';
     };
   };
 }
