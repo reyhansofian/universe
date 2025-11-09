@@ -124,14 +124,21 @@
           __unkeyed-1 = "<leader>e";
           __unkeyed-2.__raw = ''
             function()
-              local manager = require("neo-tree.sources.manager")
-              local state = manager.get_state("filesystem")
-              local winid = state and state.winid
+              -- Check if any Neo-tree window is visible
+              local neotree_visible = false
+              for _, win in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
+                local buf = vim.api.nvim_win_get_buf(win)
+                local ft = vim.api.nvim_get_option_value("filetype", { buf = buf })
+                if ft == "neo-tree" then
+                  neotree_visible = true
+                  break
+                end
+              end
 
-              if winid and vim.api.nvim_win_is_valid(winid) then
+              if neotree_visible then
                 vim.cmd("Neotree close")
               else
-                vim.cmd("Neotree show filesystem left")
+                vim.cmd("Neotree filesystem left")
               end
             end
           '';
