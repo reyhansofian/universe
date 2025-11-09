@@ -22,7 +22,11 @@
       nixvimModule = {
         inherit pkgs;
         # vimPlugins.avante-nvim = branches.stable.vimPlugins.avante-nvim;
-        module = import ./config; # import the module directly
+        module = {
+          imports = [ (import ./config) ];
+          # Disable man pages generation to avoid ansible-language-server error
+          enableMan = false;
+        };
         # You can use `extraSpecialArgs` to pass additional arguments to your module files
         extraSpecialArgs = { inherit icons branches helpers system self; };
       };
