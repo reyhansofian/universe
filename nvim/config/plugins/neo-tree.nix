@@ -60,7 +60,7 @@
       enable_refresh_on_write = true;
 
       window = {
-        position = "left";
+        position = "right";
         width = 30;
         mappings = {
           "<space>" = { };
