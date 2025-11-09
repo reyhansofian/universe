@@ -618,8 +618,6 @@
 
       yamlls.enable = true;
       yamlls.autostart = true;
-
-      ansiblels.enable = lib.mkForce false;
     };
   };
 
