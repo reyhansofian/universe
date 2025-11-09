@@ -136,7 +136,7 @@
     enable = true;
     settings.default_session = {
       command =
-        "${pkgs.tuigreet}/bin/tuigreet --remember --time --cmd Hyprland";
+        "${pkgs.greetd.tuigreet}/bin/tuigreet --remember --time --cmd Hyprland";
     };
   };
 
