@@ -618,6 +618,13 @@
 
       yamlls.enable = true;
       yamlls.autostart = true;
+
+      # Override ansiblels package to prevent build errors
+      # ansible-language-server was removed from nixpkgs
+      ansiblels.enable = false;
+      ansiblels.package = pkgs.runCommand "ansible-language-server-stub" {
+        meta.homepage = null;
+      } "mkdir -p $out";
     };
   };
 
