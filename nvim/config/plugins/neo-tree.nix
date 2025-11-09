@@ -68,19 +68,15 @@
         position = "left";
         width = 30;
         mappings = {
-          "<space>" = { };
-          "[b" = { command = "prev_source"; };
-          "]b" = { command = "next_source"; };
-          # "F" = {
-          #   command = ''
-          #     require("telescope.nvim") and find_in_dir or nil
-          #   '';
-          # };
-          # "O" = "system_open";
-          # "Y" = "copy_selector";
-          # "h" = "parent_or_close";
-          # "l" = "child_or_open";
-          # "o" = "open";
+          "<space>" = "none";
+          "<cr>" = "open_with_window_picker";
+          "l" = "open";
+          "h" = "close_node";
+          "o" = "open";
+          "S" = "open_split";
+          "s" = "open_vsplit";
+          "[b" = "prev_source";
+          "]b" = "next_source";
         };
       };
 
@@ -89,6 +85,14 @@
           event = "neo_tree_buffer_enter";
           handler.__raw = ''
             function(_) vim.opt_local.signcolumn = "auto" end
+          '';
+        }
+        {
+          event = "file_opened";
+          handler.__raw = ''
+            function(_)
+              require("neo-tree.command").execute({ action = "close" })
+            end
           '';
         }
       ];
