@@ -10,12 +10,15 @@
 
   programs.ssh = {
     enable = true;
-    userKnownHostsFile = "~/.ssh/known_hosts";
-    hashKnownHosts = false;
-    controlMaster = "no";
-    controlPath = "~/.ssh/master-%r@%n:%p";
-    controlPersist = "no";
+    enableDefaultConfig = false;
     matchBlocks = {
+      "*" = {
+        userKnownHostsFile = "~/.ssh/known_hosts";
+        hashKnownHosts = false;
+        controlMaster = "no";
+        controlPath = "~/.ssh/master-%r@%n:%p";
+        controlPersist = "no";
+      };
       "github.com" = {
         hostname = "github.com";
         identityFile = "~/.ssh/id_ed";
