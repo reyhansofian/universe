@@ -29,8 +29,6 @@
     ## Nixvim
     nixvim.url = "github:nix-community/nixvim";
     nixvim.inputs.nixpkgs.follows = "nixpkgs";
-    nixvim.inputs.nix-darwin.follows = "nix-darwin";
-    nixvim.inputs.home-manager.follows = "home-manager";
     nixvim.inputs.flake-parts.follows = "flake-parts";
 
     nixos-generators = {
