@@ -67,11 +67,12 @@ in {
 
   plugins.which-key.settings.spec = [
 
-    {
-      __unkeyed-1 = "<c-n>";
-      __unkeyed-2 = "<cmd>NvimTreeToggle<CR>";
-      desc = "Open Tree in left side";
-    }
+    # Disabled nvim-tree keybinding (using neo-tree instead)
+    # {
+    #   __unkeyed-1 = "<c-n>";
+    #   __unkeyed-2 = "<cmd>NvimTreeToggle<CR>";
+    #   desc = "Open Tree in left side";
+    # }
 
     {
       __unkeyed-1 = "ts";
@@ -156,17 +157,18 @@ in {
       end
     '';
 
-  # based on {https://github.com/r17x/nixpkgs/blob/main/configs/nvim/lua/config/nvim-tree.lua}
-  plugins.nvim-tree.enable = true;
-  plugins.nvim-tree.settings.disable_netrw = true;
-  plugins.nvim-tree.settings.view.side = "left";
-  plugins.nvim-tree.settings.view.width = 25;
-  plugins.nvim-tree.settings.respect_buf_cwd = true;
-  plugins.nvim-tree.settings.auto_reload_on_write = true;
-  plugins.nvim-tree.settings.git.enable = true;
-  plugins.nvim-tree.settings.filters.dotfiles = false;
-  plugins.nvim-tree.settings.renderer.highlight_git = true;
-  plugins.nvim-tree.settings.renderer.indent_markers.enable = true;
+  # Disabled nvim-tree in favor of neo-tree to prevent conflicts
+  # # based on {https://github.com/r17x/nixpkgs/blob/main/configs/nvim/lua/config/nvim-tree.lua}
+  # plugins.nvim-tree.enable = true;
+  # plugins.nvim-tree.settings.disable_netrw = true;
+  # plugins.nvim-tree.settings.view.side = "left";
+  # plugins.nvim-tree.settings.view.width = 25;
+  # plugins.nvim-tree.settings.respect_buf_cwd = true;
+  # plugins.nvim-tree.settings.auto_reload_on_write = true;
+  # plugins.nvim-tree.settings.git.enable = true;
+  # plugins.nvim-tree.settings.filters.dotfiles = false;
+  # plugins.nvim-tree.settings.renderer.highlight_git = true;
+  # plugins.nvim-tree.settings.renderer.indent_markers.enable = true;
 
   plugins.rainbow-delimiters.enable = true;
   plugins.rainbow-delimiters.settings.highlight = indentBlankLineHighlights;
