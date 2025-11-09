@@ -64,6 +64,12 @@
                 meta.homepage = null;
               } "mkdir -p $out";
 
+              # Fix fcitx5-with-addons location change for home-manager compatibility
+              # fcitx5-with-addons was moved from libsForQt5 to kdePackages
+              libsForQt5 = prev.libsForQt5 // {
+                fcitx5-with-addons = final.kdePackages.fcitx5-with-addons or (final.runCommand "fcitx5-with-addons-stub" {} "mkdir -p $out");
+              };
+
               branches = let
                 pkgsFrom = branch: system:
                   import branch {
