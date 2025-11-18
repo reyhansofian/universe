@@ -70,7 +70,7 @@
         #!/usr/bin/env bash
 
         # Get DNS servers from Windows
-        WIN_DNS=$(${pkgs.powershell}/bin/powershell.exe -Command "(Get-DnsClientServerAddress -AddressFamily IPv4 | Where-Object {`$_.ServerAddresses}).ServerAddresses" 2>/dev/null | tr -d '\r' | grep -v '^$')
+        WIN_DNS=$(powershell.exe -Command "(Get-DnsClientServerAddress -AddressFamily IPv4 | Where-Object {\$_.ServerAddresses}).ServerAddresses" 2>/dev/null | tr -d '\r' | grep -v '^$')
 
         if [ -z "$WIN_DNS" ]; then
           # Fallback to Google DNS
