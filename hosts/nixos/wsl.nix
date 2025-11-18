@@ -88,8 +88,6 @@
             fi
           done
         } > /etc/resolv.conf
-
-        logger "WSL VPN DNS sync completed"
       ''}";
       RemainAfterExit = true;
     };
