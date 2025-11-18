@@ -34,8 +34,8 @@
 
       echo "Syncing Windows DNS to WSL..."
 
-      # Get DNS servers from Windows
-      WIN_DNS=$(powershell.exe -Command "(Get-DnsClientServerAddress -AddressFamily IPv4 | Where-Object {$_.ServerAddresses}).ServerAddresses" 2>/dev/null | tr -d '\r' | grep -v '^$')
+      # Get DNS servers from Windows (from active network interfaces)
+      WIN_DNS=$(powershell.exe -Command "Get-NetIPConfiguration | Where-Object {\$_.IPv4DefaultGateway -ne \$null} | ForEach-Object {\$_.DNSServer.ServerAddresses} | Where-Object {\$_ -ne \$null}" 2>/dev/null | tr -d '\r' | grep -v '^$')
 
       if [ -z "$WIN_DNS" ]; then
         echo "Warning: Could not retrieve Windows DNS servers"
@@ -69,8 +69,8 @@
       ExecStart = "${pkgs.writeShellScript "wsl-vpn-sync-service" ''
         #!/usr/bin/env bash
 
-        # Get DNS servers from Windows
-        WIN_DNS=$(powershell.exe -Command "(Get-DnsClientServerAddress -AddressFamily IPv4 | Where-Object {\$_.ServerAddresses}).ServerAddresses" 2>/dev/null | tr -d '\r' | grep -v '^$')
+        # Get DNS servers from Windows (from active network interfaces)
+        WIN_DNS=$(powershell.exe -Command "Get-NetIPConfiguration | Where-Object {\$_.IPv4DefaultGateway -ne \$null} | ForEach-Object {\$_.DNSServer.ServerAddresses} | Where-Object {\$_ -ne \$null}" 2>/dev/null | tr -d '\r' | grep -v '^$')
 
         if [ -z "$WIN_DNS" ]; then
           # Fallback to Google DNS
