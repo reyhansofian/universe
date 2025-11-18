@@ -69,7 +69,7 @@
       echo "Syncing Windows DNS to WSL..."
 
       # Get DNS servers from Windows (including TAP adapters for OpenVPN)
-      WIN_DNS=$(powershell.exe -Command "Get-NetAdapter | Where-Object {\$_.Status -eq 'Up'} | Get-NetIPConfiguration | Where-Object {\$_.DNSServer -ne \$null} | ForEach-Object {\$_.DNSServer.ServerAddresses} | Where-Object {\$_ -ne \$null -and \$_ -notlike '*:*'}" 2>/dev/null | tr -d '\r' | grep -v '^$' | sort -u)
+      WIN_DNS=$(powershell.exe -Command "Get-DnsClientServerAddress -AddressFamily IPv4 | Where-Object {\$_.ServerAddresses} | ForEach-Object {\$_.ServerAddresses}" 2>/dev/null | tr -d '\r' | grep -v '^$' | sort -u)
 
       if [ -z "$WIN_DNS" ]; then
         echo "Warning: Could not retrieve Windows DNS servers"
@@ -126,7 +126,7 @@
         #!/usr/bin/env bash
 
         # Get DNS servers from Windows (including TAP adapters for OpenVPN)
-        WIN_DNS=$(powershell.exe -Command "Get-NetAdapter | Where-Object {\$_.Status -eq 'Up'} | Get-NetIPConfiguration | Where-Object {\$_.DNSServer -ne \$null} | ForEach-Object {\$_.DNSServer.ServerAddresses} | Where-Object {\$_ -ne \$null -and \$_ -notlike '*:*'}" 2>/dev/null | tr -d '\r' | grep -v '^$' | sort -u)
+        WIN_DNS=$(powershell.exe -Command "Get-DnsClientServerAddress -AddressFamily IPv4 | Where-Object {\$_.ServerAddresses} | ForEach-Object {\$_.ServerAddresses}" 2>/dev/null | tr -d '\r' | grep -v '^$' | sort -u)
 
         if [ -z "$WIN_DNS" ]; then
           # Fallback to Google DNS
