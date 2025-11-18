@@ -154,13 +154,53 @@ ssh user@internal-server
 
 ## Troubleshooting
 
+### Issue: WSL has no external network connectivity (Critical)
+
+**Symptom**: Can ping gateway but cannot reach external IPs like `1.1.1.1` or `8.8.8.8`
+
+**Cause**: WSL networking isolation prevents traffic from reaching through Windows VPN tunnel
+
+**Solutions**:
+
+1. **Enable Network Mirroring** (Windows 11 22H2+ only)
+
+   Edit `C:\Users\<YourUsername>\.wslconfig`:
+   ```ini
+   [wsl2]
+   networkingMode=mirrored
+   dnsTunneling=true
+   autoProxy=true
+   firewall=true
+   ```
+
+   Then restart: `wsl --shutdown` (in PowerShell)
+
+2. **Configure Windows Firewall** (Run PowerShell as Administrator)
+   ```powershell
+   New-NetFirewallRule -DisplayName "WSL Outbound" -Direction Outbound -InterfaceAlias "vEthernet (WSL)" -Action Allow
+   New-NetFirewallRule -DisplayName "WSL Inbound" -Direction Inbound -InterfaceAlias "vEthernet (WSL)" -Action Allow
+   ```
+
+3. **Check VPN Split Tunneling**
+   - In OpenVPN Connect, check if "Route all traffic through VPN" is enabled
+   - If using split-tunnel, ensure WSL IP range is included in VPN routes
+
+4. **Test Connectivity**
+   ```bash
+   # Should work after applying fixes
+   ping -c 2 1.1.1.1
+   ping -c 2 8.8.8.8
+   nslookup google.com
+   ```
+
 ### Issue: DNS not updating
 - **Solution**: Run `wsl-vpn-sync` manually after connecting to VPN
-- **Alternative**: Add the script to your shell RC file
+- **Alternative**: Enable the periodic sync timer in `wsl.nix`
 
 ### Issue: Still can't reach VPN resources
 - **Check**: Verify VPN is connected on Windows
 - **Check**: Run `wsl-vpn-sync` and verify DNS servers are from VPN
+- **Check**: Test basic connectivity first (can you ping external IPs?)
 - **Try**: Restart WSL completely: `wsl --shutdown` (in PowerShell)
 
 ### Issue: Network mirroring not working
