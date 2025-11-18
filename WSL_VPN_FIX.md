@@ -15,7 +15,9 @@ The following changes have been made to `/hosts/nixos/wsl.nix`:
 
 - **Disabled automatic DNS generation**: `generateResolvConf = false` allows manual DNS management
 - **Added fallback DNS servers**: Google DNS (8.8.8.8, 8.8.4.4) as fallback
-- **Created `wsl-vpn-sync` script**: Syncs Windows DNS to WSL when VPN connects
+- **Created `wsl-vpn-sync` script**: Manual command to sync Windows DNS to WSL
+- **Added systemd service**: Automatically syncs DNS on boot (`wsl-vpn-dns-sync.service`)
+- **Optional timer**: Periodic DNS sync every 5 minutes (commented out, can be enabled)
 
 ### 2. Windows .wslconfig (Recommended)
 
@@ -48,20 +50,39 @@ wsl --shutdown
 
 ### Method 1: Automatic DNS Sync (Recommended)
 
+**DNS now syncs automatically on boot!**
+
 1. **Rebuild NixOS configuration**:
    ```bash
    sudo nixos-rebuild switch
    ```
 
-2. **After connecting to VPN on Windows**, run in WSL:
-   ```bash
-   wsl-vpn-sync
+2. **Restart WSL** (from PowerShell on Windows):
+   ```powershell
+   wsl --shutdown
    ```
 
-3. **Test connectivity**:
+3. **DNS will sync automatically** when WSL starts. Test connectivity:
    ```bash
    ping google.com
    nslookup your-vpn-resource.example.com
+   ```
+
+4. **(Optional) Enable periodic sync**: If you want DNS to update every 5 minutes automatically, uncomment the timer in `/hosts/nixos/wsl.nix`:
+   ```nix
+   # Change this:
+   # systemd.timers.wsl-vpn-dns-sync = {
+
+   # To this:
+   systemd.timers.wsl-vpn-dns-sync = {
+   ```
+   Then rebuild: `sudo nixos-rebuild switch`
+
+5. **(Optional) Manual sync**: If you connect to VPN after WSL is running and want immediate DNS update:
+   ```bash
+   wsl-vpn-sync
+   # or
+   sudo systemctl restart wsl-vpn-dns-sync.service
    ```
 
 ### Method 2: Manual DNS Configuration
@@ -85,21 +106,19 @@ If the script doesn't work, manually edit `/etc/resolv.conf`:
    nameserver 8.8.8.8
    ```
 
-### Method 3: Automatic DNS Sync on Shell Start (Optional)
+### Method 3: Check Service Status
 
-Add to your shell RC file (`~/.zshrc` or `~/.bashrc`):
+You can check if the automatic DNS sync service is running:
 
 ```bash
-# Auto-sync DNS when VPN might be active
-if command -v wsl-vpn-sync &> /dev/null; then
-  # Only run if resolv.conf is older than 1 hour
-  if [ -f /etc/resolv.conf ]; then
-    if [ $(find /etc/resolv.conf -mmin +60 2>/dev/null) ]; then
-      echo "DNS might be stale, syncing..."
-      wsl-vpn-sync
-    fi
-  fi
-fi
+# Check service status
+sudo systemctl status wsl-vpn-dns-sync.service
+
+# View service logs
+journalctl -u wsl-vpn-dns-sync.service
+
+# Manually trigger sync
+sudo systemctl restart wsl-vpn-dns-sync.service
 ```
 
 ## Verification
