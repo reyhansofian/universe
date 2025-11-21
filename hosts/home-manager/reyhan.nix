@@ -19,6 +19,7 @@
       pkgs.sops
       pkgs.claude-code
       pkgs.comma
+      pkgs.inetutils
     ] ++ lib.optionals (osConfig.networking.hostName == "nixos-asus") [
       pkgs._1password-cli
       pkgs._1password-gui
