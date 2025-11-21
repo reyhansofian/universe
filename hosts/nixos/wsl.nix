@@ -30,29 +30,7 @@
 
   # environment.systemPackages = [ inputs.nixpkgs-master.claude-code ];
   environment.shells = with pkgs; [ zsh ];
-  environment.systemPackages = with pkgs; [ iproute2 ];
   # environment.variables = { VAGRANT_WSL_ENABLE_WINDOWS_ACCESS = "1"; };
-
-  # Add VPN routes for AWS internal IPs
-  systemd.services.wsl-vpn-routes = {
-    description = "Add VPN routes for AWS access";
-    after = [ "network.target" ];
-    wantedBy = [ "multi-user.target" ];
-    serviceConfig = {
-      Type = "oneshot";
-      RemainAfterExit = true;
-    };
-    script = ''
-      # Get the Windows host IP (default gateway)
-      GATEWAY=$(${pkgs.iproute2}/bin/ip route show default | ${pkgs.gawk}/bin/awk '{print $3}')
-
-      # Add routes for common AWS VPC CIDR blocks
-      ${pkgs.iproute2}/bin/ip route add 10.0.0.0/8 via $GATEWAY 2>/dev/null || true
-      ${pkgs.iproute2}/bin/ip route add 172.16.0.0/12 via $GATEWAY 2>/dev/null || true
-
-      echo "VPN routes added via gateway $GATEWAY"
-    '';
-  };
 
   networking.hostName = "nixos";
   networking.extraHosts = "192.168.0.157 ubuntu.local";
