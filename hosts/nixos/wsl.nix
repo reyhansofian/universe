@@ -13,7 +13,6 @@
   wsl.defaultUser = "reyhan";
   wsl.docker-desktop.enable = true;
   wsl.wslConf.network.generateHosts = false;
-  wsl.wslConf.network.mtu = 1400;
   wsl.wslConf.automount.options = "metadata,uid=1000,gid=100";
 
   home-manager.useGlobalPkgs = true;
@@ -32,6 +31,21 @@
   # environment.systemPackages = [ inputs.nixpkgs-master.claude-code ];
   environment.shells = with pkgs; [ zsh ];
   # environment.variables = { VAGRANT_WSL_ENABLE_WINDOWS_ACCESS = "1"; };
+
+  # Set MTU to 1400 for VPN/gaming performance
+  systemd.services.wsl-set-mtu = {
+    description = "Set WSL network interface MTU to 1400";
+    after = [ "network.target" ];
+    wantedBy = [ "multi-user.target" ];
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+    };
+    script = ''
+      ${pkgs.iproute2}/bin/ip link set dev eth0 mtu 1400
+      echo "MTU set to 1400 on eth0"
+    '';
+  };
 
   networking.hostName = "nixos";
   networking.extraHosts = "192.168.0.157 ubuntu.local";
