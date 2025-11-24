@@ -13,6 +13,7 @@
   wsl.defaultUser = "reyhan";
   wsl.docker-desktop.enable = true;
   wsl.wslConf.network.generateHosts = false;
+  wsl.wslConf.network.mtu = 1400;
   wsl.wslConf.automount.options = "metadata,uid=1000,gid=100";
 
   home-manager.useGlobalPkgs = true;
