@@ -1,0 +1,231 @@
+# WSL2 VPN Connectivity Fix
+
+## Problem
+WSL2 uses a virtualized Hyper-V network adapter with NAT, which creates a separate network namespace from Windows. When you connect to OpenVPN on Windows, the VPN tunnel is established on Windows but WSL2 traffic doesn't automatically route through it.
+
+## Root Causes
+1. **Network Isolation**: WSL2 doesn't share the Windows network stack directly
+2. **DNS Issues**: WSL2's auto-generated DNS doesn't update when VPN connects
+3. **Routing**: WSL2 traffic goes through NAT, bypassing the VPN tunnel
+
+## Solutions Implemented
+
+### 1. NixOS Configuration Changes
+The following changes have been made to `/hosts/nixos/wsl.nix`:
+
+- **Disabled automatic DNS generation**: `generateResolvConf = false` allows manual DNS management
+- **Added fallback DNS servers**: Google DNS (8.8.8.8, 8.8.4.4) as fallback
+- **Created `wsl-vpn-sync` script**: Manual command to sync Windows DNS to WSL
+- **Added systemd service**: Automatically syncs DNS on boot (`wsl-vpn-dns-sync.service`)
+- **Optional timer**: Periodic DNS sync every 5 minutes (commented out, can be enabled)
+
+### 2. Windows .wslconfig (Recommended)
+
+Create or edit `C:\Users\<YourUsername>\.wslconfig` with the following content:
+
+```ini
+[wsl2]
+# Network mirroring mode (Windows 11 22H2+ only)
+# This makes WSL2 use the same network interface as Windows
+networkingMode=mirrored
+
+# DNS tunneling - helps with VPN DNS resolution
+dnsTunneling=true
+
+# Localhost forwarding
+localhostForwarding=true
+
+# Auto proxy (helps with corporate proxies/VPNs)
+autoProxy=true
+```
+
+**Note**: `networkingMode=mirrored` requires Windows 11 22H2 (build 22621) or later. If you're on Windows 10 or older Windows 11, remove this line.
+
+After creating/editing `.wslconfig`, restart WSL:
+```powershell
+wsl --shutdown
+```
+
+## Usage Instructions
+
+### Method 1: Automatic DNS Sync (Recommended)
+
+**DNS now syncs automatically on boot!**
+
+1. **Rebuild NixOS configuration**:
+   ```bash
+   sudo nixos-rebuild switch
+   ```
+
+2. **Restart WSL** (from PowerShell on Windows):
+   ```powershell
+   wsl --shutdown
+   ```
+
+3. **DNS will sync automatically** when WSL starts. Test connectivity:
+   ```bash
+   ping google.com
+   nslookup your-vpn-resource.example.com
+   ```
+
+4. **(Optional) Enable periodic sync**: If you want DNS to update every 5 minutes automatically, uncomment the timer in `/hosts/nixos/wsl.nix`:
+   ```nix
+   # Change this:
+   # systemd.timers.wsl-vpn-dns-sync = {
+
+   # To this:
+   systemd.timers.wsl-vpn-dns-sync = {
+   ```
+   Then rebuild: `sudo nixos-rebuild switch`
+
+5. **(Optional) Manual sync**: If you connect to VPN after WSL is running and want immediate DNS update:
+   ```bash
+   wsl-vpn-sync
+   # or
+   sudo systemctl restart wsl-vpn-dns-sync.service
+   ```
+
+### Method 2: Manual DNS Configuration
+
+If the script doesn't work, manually edit `/etc/resolv.conf`:
+
+1. **Find Windows DNS servers** (in PowerShell on Windows):
+   ```powershell
+   Get-DnsClientServerAddress -AddressFamily IPv4
+   ```
+
+2. **Edit resolv.conf in WSL**:
+   ```bash
+   sudo nano /etc/resolv.conf
+   ```
+
+3. **Add nameservers**:
+   ```
+   nameserver <VPN_DNS_1>
+   nameserver <VPN_DNS_2>
+   nameserver 8.8.8.8
+   ```
+
+### Method 3: Check Service Status
+
+You can check if the automatic DNS sync service is running:
+
+```bash
+# Check service status
+sudo systemctl status wsl-vpn-dns-sync.service
+
+# View service logs
+journalctl -u wsl-vpn-dns-sync.service
+
+# Manually trigger sync
+sudo systemctl restart wsl-vpn-dns-sync.service
+```
+
+## Verification
+
+### Check DNS Resolution
+```bash
+# Should show VPN DNS servers
+cat /etc/resolv.conf
+
+# Test DNS lookup
+nslookup google.com
+
+# If you have a VPN-only resource, test it
+nslookup internal.company.com
+```
+
+### Check Routing
+```bash
+# Check default route (requires iproute2 package)
+ip route show
+
+# Test connectivity
+ping 8.8.8.8
+ping google.com
+```
+
+### Test VPN Resources
+Try accessing resources that are only available through VPN:
+```bash
+curl https://internal.company.com
+ssh user@internal-server
+```
+
+## Troubleshooting
+
+### Issue: WSL has no external network connectivity (Critical)
+
+**Symptom**: Can ping gateway but cannot reach external IPs like `1.1.1.1` or `8.8.8.8`
+
+**Cause**: WSL networking isolation prevents traffic from reaching through Windows VPN tunnel
+
+**Solutions**:
+
+1. **Enable Network Mirroring** (Windows 11 22H2+ only)
+
+   Edit `C:\Users\<YourUsername>\.wslconfig`:
+   ```ini
+   [wsl2]
+   networkingMode=mirrored
+   dnsTunneling=true
+   autoProxy=true
+   firewall=true
+   ```
+
+   Then restart: `wsl --shutdown` (in PowerShell)
+
+2. **Configure Windows Firewall** (Run PowerShell as Administrator)
+   ```powershell
+   New-NetFirewallRule -DisplayName "WSL Outbound" -Direction Outbound -InterfaceAlias "vEthernet (WSL)" -Action Allow
+   New-NetFirewallRule -DisplayName "WSL Inbound" -Direction Inbound -InterfaceAlias "vEthernet (WSL)" -Action Allow
+   ```
+
+3. **Check VPN Split Tunneling**
+   - In OpenVPN Connect, check if "Route all traffic through VPN" is enabled
+   - If using split-tunnel, ensure WSL IP range is included in VPN routes
+
+4. **Test Connectivity**
+   ```bash
+   # Should work after applying fixes
+   ping -c 2 1.1.1.1
+   ping -c 2 8.8.8.8
+   nslookup google.com
+   ```
+
+### Issue: DNS not updating
+- **Solution**: Run `wsl-vpn-sync` manually after connecting to VPN
+- **Alternative**: Enable the periodic sync timer in `wsl.nix`
+
+### Issue: Still can't reach VPN resources
+- **Check**: Verify VPN is connected on Windows
+- **Check**: Run `wsl-vpn-sync` and verify DNS servers are from VPN
+- **Check**: Test basic connectivity first (can you ping external IPs?)
+- **Try**: Restart WSL completely: `wsl --shutdown` (in PowerShell)
+
+### Issue: Network mirroring not working
+- **Requirement**: Windows 11 22H2+ (build 22621 or later)
+- **Check Windows version**: Run `winver` in Windows
+- **If older**: Remove `networkingMode=mirrored` from `.wslconfig`
+
+### Issue: Permission denied when running wsl-vpn-sync
+- **Solution**: The script uses `sudo` internally, you may need to enter your password
+
+## Alternative: VPN Client in WSL
+
+If the above solutions don't work, consider installing OpenVPN client directly in WSL:
+
+```nix
+# Add to wsl.nix
+environment.systemPackages = with pkgs; [
+  openvpn
+  # ... other packages
+];
+```
+
+Then run OpenVPN directly in WSL with your VPN config file.
+
+## References
+- [WSL2 Networking Documentation](https://learn.microsoft.com/en-us/windows/wsl/networking)
+- [WSL2 Advanced Settings (.wslconfig)](https://learn.microsoft.com/en-us/windows/wsl/wsl-config#wslconfig)
+- [NixOS WSL Module](https://github.com/nix-community/NixOS-WSL)
