@@ -25,6 +25,10 @@
       git-lfs
       git
 
+      # AI/LLM Tools
+      opencode
+      gemini-cli
+
       unzip
       kittysay
     ] ++ lib.optionals pkgs.stdenv.isDarwin [
