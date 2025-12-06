@@ -17,14 +17,12 @@
       P10K_INSTANT_PROMPT="$XDG_CACHE_HOME/p10k-instant-prompt-''${(%):-%n}.zsh"
       [[ ! -r "$P10K_INSTANT_PROMPT" ]] || source "$P10K_INSTANT_PROMPT"
       ZSH_AUTOSUGGEST_STRATEGY=(completion history)
-      export VAGRANT_WSL_ENABLE_WINDOWS_ACCESS="1"
-      export PATH="$PATH:/mnt/e/VirtualBox"
+      eval "$(starship init zsh)"
     '';
 
     # export ANTHROPIC_API_KEY="$(<"/home/reyhan/.config/sops-nix/secrets/anthropic_api_key")"
-    loginExtra = ''
-      export OPENAI_API_KEY="$(<"/home/reyhan/.config/sops-nix/secrets/open_api_key")"
-    '';
+    # export OPENAI_API_KEY="$(<"/home/reyhan/.config/sops-nix/secrets/open_api_key")"
+    loginExtra = "";
 
     plugins = [
       {

@@ -36,7 +36,7 @@
         "$6$KmjOnrNHWtJrJgiF$f18JDyaKXtMFaaZ6NVizL7V3qb76XzWkZqCfXBJ9rQAExmNQsF1yiCbmUanSajj9moucqmrfBBOpQiyY5Z7Sp1";
     };
   };
-  users.defaultUserShell = pkgs.zsh;
+  users.defaultUserShell = pkgs.fish;
 
   nixpkgs.config = { allowUnfree = true; };
   nixpkgs.overlays = [ ];
@@ -82,7 +82,7 @@
   environment.systemPackages = with pkgs;
     [ google-chrome discord spotify networkmanagerapplet swappy slurp grim ]
     ++ (with pkgs.nixos-artwork.wallpapers; [ binary-black ]);
-  environment.shells = with pkgs; [ zsh ];
+  environment.shells = with pkgs; [ fish zsh ];
 
   networking.hostName = "nixos-asus";
   networking.networkmanager.enable = true;
@@ -138,6 +138,7 @@
   # systemd.services."getty@tty1".enable = false;
   # systemd.services."autovt@tty1".enable = false;
 
+  programs.fish.enable = true;
   programs.zsh.enable = true;
 
   # Enable touchpad support (enabled default in most desktopManager).

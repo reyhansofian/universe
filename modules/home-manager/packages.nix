@@ -18,12 +18,15 @@
       dnsutils
       openssl
       jq
+      lsd
+      jump
 
       # Git
       gh
       git-crypt
       git-lfs
       git
+      yadm
 
       # AI/LLM Tools
       opencode
@@ -31,6 +34,7 @@
 
       unzip
       kittysay
+      starship
     ] ++ lib.optionals pkgs.stdenv.isDarwin [
       # Add packages only for Darwin (MacOS)
     ] ++ lib.optionals pkgs.stdenv.isLinux [

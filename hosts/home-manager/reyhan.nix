@@ -5,6 +5,7 @@
       k8s
       packages
       shell
+      fish
       ssh
       programs
       tmux

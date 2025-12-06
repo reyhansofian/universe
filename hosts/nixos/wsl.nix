@@ -29,16 +29,17 @@
   services.dbus.enable = true;
 
   # environment.systemPackages = [ inputs.nixpkgs-master.claude-code ];
-  environment.shells = with pkgs; [ zsh ];
+  environment.shells = with pkgs; [ fish zsh ];
   # environment.variables = { VAGRANT_WSL_ENABLE_WINDOWS_ACCESS = "1"; };
 
   networking.hostName = "nixos";
   networking.extraHosts = "192.168.0.157 ubuntu.local";
 
   users.users.reyhan = {
-    shell = pkgs.zsh;
+    shell = pkgs.fish;
     home = "/home/reyhan";
   };
+  programs.fish.enable = true;
   programs.zsh.enable = true;
 
   fonts.fontDir.enable = true;
