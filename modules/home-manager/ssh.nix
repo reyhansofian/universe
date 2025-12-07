@@ -2,7 +2,6 @@
   home.activation = {
     change-ssh-permission = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
       # $DRY_RUN_CMD chmod $VERBOSE_ARG 600 ~/.ssh/id_ed.pub
-      # $DRY_RUN_CMD chmod $VERBOSE_ARG 600 ~/.ssh/efish_ed.pub
       # $DRY_RUN_CMD chmod $VERBOSE_ARG 600 ~/.ssh/user-ubuntu-vm.pub
       # $DRY_RUN_CMD chmod $VERBOSE_ARG 600 ~/.ssh/gitlab.pub
     '';
@@ -29,13 +28,6 @@
       "gitlab.com" = {
         hostname = "gitlab.com";
         identityFile = "~/.ssh/gitlab";
-        identitiesOnly = true;
-        user = "git";
-        extraOptions = { AddKeysToAgent = "yes"; };
-      };
-      "git.lauk.io" = {
-        hostname = "git.lauk.io";
-        identityFile = "~/.ssh/efish_ed";
         identitiesOnly = true;
         user = "git";
         extraOptions = { AddKeysToAgent = "yes"; };

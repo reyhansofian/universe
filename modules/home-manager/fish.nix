@@ -160,17 +160,6 @@
           sha256 = "sha256-T8KYLA/r/gOKvAivKRoeqIwE2pINlxFQtZJHpOy9GMM=";
         };
       }
-
-      # Sponge: clean failed commands from history
-      {
-        name = "sponge";
-        src = pkgs.fetchFromGitHub {
-          owner = "meaningful-ooo";
-          repo = "sponge";
-          rev = "1.1.0";
-          sha256 = "sha256-MdcZUDRtNJdiyo2l9o5ma7nAX84xEJbGFhAVhK+Zm1w=";
-        };
-      }
     ];
 
     # Fish shell initialization
@@ -186,10 +175,6 @@
 
       # FZF configuration
       set -gx FZF_DEFAULT_OPTS "--height 40% --layout=reverse --border"
-
-      # SSH key auto-loading (from matchai's config)
-      ${pkgs.openssh}/bin/ssh-add ~/.ssh/id_ed25519 2>/dev/null
-      ${pkgs.openssh}/bin/ssh-add ~/.ssh/id_rsa 2>/dev/null
 
       # Jump shell integration (from matchai's config)
       status is-interactive; and ${pkgs.jump}/bin/jump shell fish | source
@@ -208,12 +193,6 @@
       set fish_color_cwd_root brred
       set fish_color_status brred
       set fish_color_search_match --background=brblue
-
-      # Fisher setup (if plugins need initialization)
-      if not functions -q fisher
-          set -q XDG_CONFIG_HOME; or set XDG_CONFIG_HOME ~/.config
-          curl -sL https://raw.githubusercontent.com/jorgebucaran/fisher/main/functions/fisher.fish | source && fisher update
-      end
     '';
 
     # Login shell initialization

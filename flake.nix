@@ -9,9 +9,6 @@
     nixpkgs-stable-24.url = "github:nixos/nixpkgs/nixos-24.11";
     nixpkgs-unstable.url = "github:nixos/nixpkgs/nixpkgs-unstable";
 
-    nix-darwin.url = "github:LnL7/nix-darwin";
-    nix-darwin.inputs.nixpkgs.follows = "nixpkgs";
-
     home-manager.url = "github:nix-community/home-manager";
     home-manager.inputs.nixpkgs.follows = "nixpkgs-unstable";
 
@@ -60,14 +57,17 @@
             overlays.default = final: prev: {
               # Provide dummy ansible-language-server for nixvim compatibility
               # ansible-language-server was removed from nixpkgs but nixvim still references it
-              ansible-language-server = final.runCommand "ansible-language-server-stub" {
-                meta.homepage = null;
-              } "mkdir -p $out";
+              ansible-language-server =
+                final.runCommand "ansible-language-server-stub" {
+                  meta.homepage = null;
+                } "mkdir -p $out";
 
               # Fix fcitx5-with-addons location change for home-manager compatibility
               # fcitx5-with-addons was moved from libsForQt5 to kdePackages
               libsForQt5 = prev.libsForQt5 // {
-                fcitx5-with-addons = final.kdePackages.fcitx5-with-addons or (final.runCommand "fcitx5-with-addons-stub" {} "mkdir -p $out");
+                fcitx5-with-addons =
+                  final.kdePackages.fcitx5-with-addons or (final.runCommand
+                    "fcitx5-with-addons-stub" { } "mkdir -p $out");
               };
 
               branches = let
@@ -77,11 +77,14 @@
                     inherit (inputs.self.nixpkgs) config;
                   };
               in {
-                master = pkgsFrom inputs.nixpkgs-master prev.stdenv.hostPlatform.system;
-                stable = pkgsFrom inputs.nixpkgs-stable prev.stdenv.hostPlatform.system;
-                stable-24 =
-                  pkgsFrom inputs.nixpkgs-stable-24 prev.stdenv.hostPlatform.system;
-                unstable = pkgsFrom inputs.nixpkgs-unstable prev.stdenv.hostPlatform.system;
+                master = pkgsFrom inputs.nixpkgs-master
+                  prev.stdenv.hostPlatform.system;
+                stable = pkgsFrom inputs.nixpkgs-stable
+                  prev.stdenv.hostPlatform.system;
+                stable-24 = pkgsFrom inputs.nixpkgs-stable-24
+                  prev.stdenv.hostPlatform.system;
+                unstable = pkgsFrom inputs.nixpkgs-unstable
+                  prev.stdenv.hostPlatform.system;
               };
             };
 
@@ -156,6 +159,6 @@
         # darwin.configurationsDirectory = ./hosts/darwin;
       };
 
-      systems = [ "x86_64-linux" "aarch64-linux" "aarch64-darwin" ];
+      systems = [ "x86_64-linux" "aarch64-linux" ];
     };
 }
