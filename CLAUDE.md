@@ -203,3 +203,26 @@ home-manager expire-generations "-7 days"
 - Main branch: `main`
 - Recent commits show feature additions and fixes
 - Use conventional commit style based on repository history
+
+<!-- AUTO-MANAGED SECTION - auto-memory will update below -->
+
+## Auto-Managed Metadata
+
+**Last Updated**: 2025-12-07
+**Framework**: Nix Flake with flake-parts and ez-configs
+**Total Nix Files**: 49
+**Key Directories**: hosts/, modules/, nvim/
+
+### Build/Deploy Commands
+- `sudo nixos-rebuild switch --flake .`
+- `home-manager switch --flake .#reyhan`
+- `nix fmt` (format)
+- `nix flake check` (validate)
+
+### Key Files
+- flake.nix: Root flake configuration
+- nvim/: Neovim configuration via nixvim
+- modules/: Modular system and home-manager configs
+- hosts/: Host-specific configurations
+
+<!-- END AUTO-MANAGED SECTION -->

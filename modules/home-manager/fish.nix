@@ -5,9 +5,9 @@
     # Shell aliases (merged from matchai's dotfiles and existing config)
     shellAliases = {
       # App substitutions for better tools
-      git = "${pkgs.git}/bin/git";  # Can be changed to hub if desired
-      vim = "${pkgs.neovim}/bin/nvim";
-      vi = "${pkgs.neovim}/bin/nvim";
+      git = "${pkgs.git}/bin/git"; # Can be changed to hub if desired
+      vim = "nvim";
+      vi = "nvim";
       ls = "${pkgs.lsd}/bin/lsd";
 
       # File navigation
