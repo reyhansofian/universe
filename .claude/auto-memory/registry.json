@@ -1,0 +1,10 @@
+{
+  "subtrees": [
+    {
+      "path": "nvim",
+      "description": "Nixvim configuration with LSP, AI plugins, and completion",
+      "claudeFile": "nvim/CLAUDE.md"
+    }
+  ],
+  "lastUpdated": "2025-12-07T03:30:00Z"
+}

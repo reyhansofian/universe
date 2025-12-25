@@ -597,10 +597,35 @@
       lua_ls.enable = true;
       lua_ls.autostart = true;
 
+      pylsp.enable = true;
+
       rust_analyzer.enable = true;
       rust_analyzer.autostart = true;
       rust_analyzer.installCargo = false;
       rust_analyzer.installRustc = false;
+
+      terraformls.enable = true;
+      terraformls.autostart = true;
+      terraformls.extraOptions = {
+        # Enable formatting via terraform fmt
+        on_attach.__raw = ''
+          function(client, bufnr)
+            -- Enable formatting on save for Terraform files
+            if client.server_capabilities.documentFormattingProvider then
+              vim.api.nvim_create_autocmd("BufWritePre", {
+                group = vim.api.nvim_create_augroup("TerraformFormat", { clear = true }),
+                buffer = bufnr,
+                callback = function()
+                  vim.lsp.buf.format({ name = "terraformls", bufnr = bufnr })
+                end,
+              })
+            end
+          end
+        '';
+      };
+
+      tflint.enable = true;
+      tflint.autostart = true;
 
       nixd.enable = true;
       nixd.autostart = true;
@@ -622,9 +647,9 @@
       # Override ansiblels package to prevent build errors
       # ansible-language-server was removed from nixpkgs
       ansiblels.enable = false;
-      ansiblels.package = pkgs.runCommand "ansible-language-server-stub" {
-        meta.homepage = null;
-      } "mkdir -p $out";
+      ansiblels.package =
+        pkgs.runCommand "ansible-language-server-stub" { meta.homepage = null; }
+        "mkdir -p $out";
     };
   };
 
