@@ -170,6 +170,9 @@
       # Enable VI mode (optional - uncomment if you want vim keybindings)
       # fish_vi_key_bindings
 
+      # Fix Alt+Backspace to behave like Bash/Zsh (delete word, not entire quoted string)
+      bind \e\x7f backward-kill-path-component
+
       # Starship prompt initialization
       ${pkgs.starship}/bin/starship init fish | source
 
