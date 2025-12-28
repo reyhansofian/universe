@@ -179,22 +179,26 @@
 
         set -l before (string sub -l $pos -- $cmd)
         set -l after (string sub -s (math $pos + 1) -- $cmd)
+        set -l before_len (string length -- "$before")
 
         # Skip trailing whitespace, then delete word chars (alnum + underscore)
         set -l trimmed (string replace -r '[[:space:]]*[a-zA-Z0-9_]+$' "" -- $before)
+        set -l trimmed_len (string length -- "$trimmed")
 
         # If nothing deleted, try deleting non-word non-space chars (punctuation)
-        if test (string length -- $trimmed) -eq (string length -- $before)
+        if test "$trimmed_len" -eq "$before_len"
           set trimmed (string replace -r '[^a-zA-Z0-9_[:space:]]+$' "" -- $before)
+          set trimmed_len (string length -- "$trimmed")
         end
 
         # If still nothing, just delete whitespace
-        if test (string length -- $trimmed) -eq (string length -- $before)
+        if test "$trimmed_len" -eq "$before_len"
           set trimmed (string replace -r '[[:space:]]+$' "" -- $before)
+          set trimmed_len (string length -- "$trimmed")
         end
 
         commandline -r -- "$trimmed$after"
-        commandline -C (string length -- $trimmed)
+        commandline -C $trimmed_len
       end
       bind \e\x7f __backward_kill_word_bash
       bind \cH __backward_kill_word_bash  # Ctrl+Backspace
