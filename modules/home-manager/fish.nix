@@ -185,9 +185,9 @@
         set -l trimmed (string replace -r '[[:space:]]*[a-zA-Z0-9_]+$' "" -- $before)
         set -l trimmed_len (string length -- "$trimmed")
 
-        # If nothing deleted, try deleting non-word non-space chars (punctuation)
+        # If nothing deleted, try deleting punctuation/special chars (dash, slash, etc.)
         if test "$trimmed_len" -eq "$before_len"
-          set trimmed (string replace -r '[^a-zA-Z0-9_[:space:]]+$' "" -- $before)
+          set trimmed (string replace -r '[[:punct:]]+$' "" -- $before)
           set trimmed_len (string length -- "$trimmed")
         end
 
