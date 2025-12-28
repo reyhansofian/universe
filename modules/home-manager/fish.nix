@@ -197,6 +197,7 @@
         commandline -C (string length -- $trimmed)
       end
       bind \e\x7f __backward_kill_word_bash
+      bind \cH __backward_kill_word_bash  # Ctrl+Backspace
 
       # Starship prompt initialization
       ${pkgs.starship}/bin/starship init fish | source
