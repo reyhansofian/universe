@@ -171,7 +171,32 @@
       # fish_vi_key_bindings
 
       # Fix Alt+Backspace to behave like Bash/Zsh (delete word, not entire quoted string)
-      bind \e\x7f backward-kill-path-component
+      # Bash treats only [a-zA-Z0-9_] as word characters, so "-" is a word boundary
+      function __backward_kill_word_bash
+        set -l cmd (commandline -b)
+        set -l pos (commandline -C)
+        test $pos -le 0; and return
+
+        set -l before (string sub -l $pos -- $cmd)
+        set -l after (string sub -s (math $pos + 1) -- $cmd)
+
+        # Skip trailing whitespace, then delete word chars (alnum + underscore)
+        set -l trimmed (string replace -r '[[:space:]]*[a-zA-Z0-9_]+$' "" -- $before)
+
+        # If nothing deleted, try deleting non-word non-space chars (punctuation)
+        if test (string length -- $trimmed) -eq (string length -- $before)
+          set trimmed (string replace -r '[^a-zA-Z0-9_[:space:]]+$' "" -- $before)
+        end
+
+        # If still nothing, just delete whitespace
+        if test (string length -- $trimmed) -eq (string length -- $before)
+          set trimmed (string replace -r '[[:space:]]+$' "" -- $before)
+        end
+
+        commandline -r -- "$trimmed$after"
+        commandline -C (string length -- $trimmed)
+      end
+      bind \e\x7f __backward_kill_word_bash
 
       # Starship prompt initialization
       ${pkgs.starship}/bin/starship init fish | source
