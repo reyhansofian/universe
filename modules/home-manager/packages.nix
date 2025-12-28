@@ -20,6 +20,7 @@
       jq
       lsd
       jump
+      nodejs
 
       # Git
       gh
