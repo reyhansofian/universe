@@ -43,6 +43,9 @@
       url = "github:hyprwm/hyprland-plugins";
       inputs.hyprland.follows = "hyprland";
     };
+
+    # Claude Code - Auto-updated version with Cachix support
+    claude-code-nix.url = "github:sadjow/claude-code-nix";
   };
 
   outputs = inputs@{ flake-parts, ... }:
