@@ -18,7 +18,7 @@
     packages = [
       self.packages.${pkgs.stdenv.hostPlatform.system}.nvim
       pkgs.sops
-      pkgs.claude-code
+      inputs.claude-code-nix.packages.${pkgs.stdenv.hostPlatform.system}.default
       pkgs.comma
       pkgs.inetutils
     ] ++ lib.optionals (osConfig.networking.hostName == "nixos-asus") [
