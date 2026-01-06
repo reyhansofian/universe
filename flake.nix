@@ -46,6 +46,12 @@
 
     # Claude Code - Auto-updated version with Cachix support
     claude-code-nix.url = "github:sadjow/claude-code-nix";
+
+    # Ralph for Claude Code - Autonomous development loops
+    ralph-claude-code = {
+      url = "github:frankbria/ralph-claude-code";
+      flake = false;
+    };
   };
 
   outputs = inputs@{ flake-parts, ... }:
@@ -125,7 +131,7 @@
           };
         })
         {
-          perSystem = { system, inputs', ... }: {
+          perSystem = { system, inputs', pkgs, ... }: {
             formatter = inputs'.nixpkgs.legacyPackages.nixfmt-rfc-style;
             _module.args = {
               inherit (inputs.self) icons colors color;
@@ -135,6 +141,10 @@
                 inherit system;
                 inherit (inputs.self.nixpkgs) config overlays;
               };
+            };
+
+            packages.ralph-claude-code = pkgs.callPackage ./pkgs/ralph-claude-code {
+              ralph-claude-code-src = inputs.ralph-claude-code;
             };
           };
         }
