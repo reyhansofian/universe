@@ -28,6 +28,16 @@ stdenv.mkDerivation {
     git
   ];
 
+  postPatch = ''
+    # Patch scripts to use claude --print for non-interactive mode
+    # This fixes the Ink "Raw mode is not supported" error when piping input
+    substituteInPlace ralph_import.sh \
+      --replace 'CLAUDE_CODE_CMD="claude"' 'CLAUDE_CODE_CMD="claude --print"'
+
+    substituteInPlace ralph_loop.sh \
+      --replace 'CLAUDE_CODE_CMD="claude"' 'CLAUDE_CODE_CMD="claude --print"'
+  '';
+
   installPhase = ''
     runHook preInstall
 
