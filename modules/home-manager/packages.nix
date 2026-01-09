@@ -32,6 +32,7 @@
       # AI/LLM Tools
       opencode
       gemini-cli
+      uv  # Required for Serena MCP
 
       unzip
       kittysay
