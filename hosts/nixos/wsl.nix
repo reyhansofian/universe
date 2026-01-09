@@ -21,6 +21,7 @@
   nix.settings = {
     nix-path = [ "nixpkgs=${inputs.nixpkgs}" ];
     experimental-features = [ "flakes" "nix-command" ];
+    trusted-users = [ "root" "reyhan" "@wheel" ];
   };
 
   # virtualisation.virtualbox.host.enable = true;
