@@ -2,6 +2,7 @@
   lib,
   buildGoModule,
   fetchFromGitHub,
+  git,
 }:
 
 buildGoModule rec {
@@ -19,6 +20,9 @@ buildGoModule rec {
 
   # The main binary is bv
   subPackages = [ "cmd/bv" ];
+
+  # Tests require git to be available
+  nativeCheckInputs = [ git ];
 
   ldflags = [
     "-s"
