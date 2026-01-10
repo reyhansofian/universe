@@ -164,6 +164,9 @@
             packages.ralph-claude-code = pkgs.callPackage ./pkgs/ralph-claude-code {
               ralph-claude-code-src = inputs.ralph-claude-code;
             };
+
+            packages.beads = pkgs.callPackage ./pkgs/beads { };
+            packages.beads-viewer = pkgs.callPackage ./pkgs/beads-viewer { };
           };
         }
       ];
