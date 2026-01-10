@@ -1,9 +1,4 @@
-{
-  lib,
-  buildGoModule,
-  fetchFromGitHub,
-  git,
-}:
+{ lib, buildGoModule, fetchFromGitHub, git, }:
 
 buildGoModule rec {
   pname = "beads";
@@ -13,10 +8,10 @@ buildGoModule rec {
     owner = "steveyegge";
     repo = "beads";
     rev = "v${version}";
-    hash = lib.fakeHash;
+    hash = "sha256-PMzLKb0pYKiXdiEXBFe6N4FZ3AaNfvBRZlQBKijtldc=";
   };
 
-  vendorHash = lib.fakeHash;
+  vendorHash = "sha256-BpACCjVk0V5oQ5YyZRv9wC/RfHw4iikc2yrejZzD1YU=";
 
   # The main binary is bd
   subPackages = [ "cmd/bd" ];
@@ -24,10 +19,7 @@ buildGoModule rec {
   # Tests require git to be available
   nativeCheckInputs = [ git ];
 
-  ldflags = [
-    "-s"
-    "-w"
-  ];
+  ldflags = [ "-s" "-w" ];
 
   meta = with lib; {
     description = "A distributed, git-backed graph issue tracker for AI agents";

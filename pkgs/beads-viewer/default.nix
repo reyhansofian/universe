@@ -1,9 +1,4 @@
-{
-  lib,
-  buildGoModule,
-  fetchFromGitHub,
-  git,
-}:
+{ lib, buildGoModule, fetchFromGitHub, git, }:
 
 buildGoModule rec {
   pname = "beads-viewer";
@@ -13,10 +8,10 @@ buildGoModule rec {
     owner = "Dicklesworthstone";
     repo = "beads_viewer";
     rev = "v${version}";
-    hash = lib.fakeHash;
+    hash = "sha256-GteCe909fpjjiFzjVKUY9dgfU7ubzue8vDOxn0NEt/A=";
   };
 
-  vendorHash = lib.fakeHash;
+  vendorHash = "sha256-yhwokKjwDe99uuTlRtyoX4FeR1/RZEu7J0PMdAVrows=";
 
   # The main binary is bv
   subPackages = [ "cmd/bv" ];
@@ -24,14 +19,11 @@ buildGoModule rec {
   # Tests require git to be available
   nativeCheckInputs = [ git ];
 
-  ldflags = [
-    "-s"
-    "-w"
-    "-X main.version=${version}"
-  ];
+  ldflags = [ "-s" "-w" "-X main.version=${version}" ];
 
   meta = with lib; {
-    description = "Terminal-based task management interface for Beads issue tracking system";
+    description =
+      "Terminal-based task management interface for Beads issue tracking system";
     longDescription = ''
       Beads Viewer (bv) is a TUI application that visualizes Beads projects as
       dependency graphs rather than simple lists, enabling graph-theoretic analysis
