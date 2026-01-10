@@ -34,6 +34,7 @@
       gemini-cli
       uv  # Required for Serena MCP
       inputs.self.packages.${pkgs.system}.beads  # Distributed git-backed graph issue tracker for AI agents
+      inputs.self.packages.${pkgs.system}.beads-viewer  # TUI for visualizing Beads task dependencies
 
       unzip
       kittysay
