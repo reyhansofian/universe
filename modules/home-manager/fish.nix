@@ -167,6 +167,9 @@
       # Disable greeting
       set fish_greeting
 
+      # Add uv tool binaries to PATH
+      fish_add_path -g ~/.local/bin
+
       # Enable VI mode (optional - uncomment if you want vim keybindings)
       # fish_vi_key_bindings
 

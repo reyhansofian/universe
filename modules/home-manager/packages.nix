@@ -32,13 +32,15 @@
       # AI/LLM Tools
       opencode
       gemini-cli
-      uv  # Required for Serena MCP
-      inputs.self.packages.${pkgs.system}.beads  # Distributed git-backed graph issue tracker for AI agents
-      inputs.self.packages.${pkgs.system}.beads-viewer  # TUI for visualizing Beads task dependencies
+      uv # Required for Serena MCP
+      inputs.self.packages.${pkgs.system}.beads # Distributed git-backed graph issue tracker for AI agents
+      inputs.self.packages.${pkgs.system}.beads-viewer # TUI for visualizing Beads task dependencies
 
       unzip
       kittysay
       starship
+
+      python311
     ] ++ lib.optionals pkgs.stdenv.isDarwin [
       # Add packages only for Darwin (MacOS)
     ] ++ lib.optionals pkgs.stdenv.isLinux [
