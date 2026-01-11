@@ -36,6 +36,12 @@
       inputs.self.packages.${pkgs.system}.beads # Distributed git-backed graph issue tracker for AI agents
       inputs.self.packages.${pkgs.system}.beads-viewer # TUI for visualizing Beads task dependencies
 
+      # Language Servers for Serena MCP
+      marksman # Markdown LSP
+      nil # Nix LSP
+      typescript-language-server # TypeScript/JavaScript LSP
+      bash-language-server # Bash LSP
+
       unzip
       kittysay
       starship
