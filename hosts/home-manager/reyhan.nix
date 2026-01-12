@@ -18,6 +18,7 @@
     packages = [
       self.packages.${pkgs.stdenv.hostPlatform.system}.nvim
       self.packages.${pkgs.stdenv.hostPlatform.system}.ralph-claude-code
+      self.packages.${pkgs.stdenv.hostPlatform.system}.fix-serena-config
       pkgs.sops
       inputs.claude-code-nix.packages.${pkgs.stdenv.hostPlatform.system}.default
       pkgs.comma
