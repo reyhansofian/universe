@@ -42,6 +42,8 @@
       nil # Nix LSP
       typescript-language-server # TypeScript/JavaScript LSP
       bash-language-server # Bash LSP
+      terraform # Terraform CLI and LSP support
+      terraform-ls # Terraform Language Server
 
       unzip
       kittysay
