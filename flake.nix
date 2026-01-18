@@ -24,7 +24,7 @@
     nixos-wsl.url = "github:nix-community/NixOS-WSL/main";
 
     ## Nixvim
-    nixvim.url = "github:nix-community/nixvim";
+    nixvim.url = "github:nix-community/nixvim/nixos-25.11";
     nixvim.inputs.nixpkgs.follows = "nixpkgs";
     nixvim.inputs.flake-parts.follows = "flake-parts";
 

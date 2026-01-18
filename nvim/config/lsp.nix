@@ -606,23 +606,18 @@
 
       terraformls.enable = true;
       terraformls.autostart = true;
-      terraformls.extraOptions = {
-        # Enable formatting via terraform fmt
-        on_attach.__raw = ''
-          function(client, bufnr)
-            -- Enable formatting on save for Terraform files
-            if client.server_capabilities.documentFormattingProvider then
-              vim.api.nvim_create_autocmd("BufWritePre", {
-                group = vim.api.nvim_create_augroup("TerraformFormat", { clear = true }),
-                buffer = bufnr,
-                callback = function()
-                  vim.lsp.buf.format({ name = "terraformls", bufnr = bufnr })
-                end,
-              })
-            end
-          end
-        '';
-      };
+      terraformls.onAttach.function = ''
+        -- Enable formatting on save for Terraform files
+        if client.server_capabilities.documentFormattingProvider then
+          vim.api.nvim_create_autocmd("BufWritePre", {
+            group = vim.api.nvim_create_augroup("TerraformFormat", { clear = true }),
+            buffer = bufnr,
+            callback = function()
+              vim.lsp.buf.format({ name = "terraformls", bufnr = bufnr })
+            end,
+          })
+        end
+      '';
 
       tflint.enable = true;
       tflint.autostart = true;
