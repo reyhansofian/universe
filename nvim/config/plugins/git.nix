@@ -85,6 +85,7 @@ in
   ];
 
   plugins.neogit.enable = true;
+  plugins.diffview.enable = true;
   plugins.git-conflict.enable = true;
 
   plugins.gitsigns.enable = true;
