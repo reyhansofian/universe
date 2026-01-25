@@ -12,7 +12,7 @@
     ./plugins/neo-tree.nix
     ./plugins/git.nix
     ./plugins/avante.nix
-    ./plugins/markview.nix
+    ./plugins/render-markdown.nix
     ./global.nix
     ./ai.nix
     ./secret.nix

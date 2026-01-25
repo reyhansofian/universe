@@ -68,8 +68,8 @@
     ];
 
     # Optional performance knobs
-    http-connections = 64;
-    max-substitution-jobs = 64;
+    http-connections = 128;
+    max-substitution-jobs = 128;
   };
 
   outputs = inputs@{ flake-parts, ... }:
@@ -161,13 +161,15 @@
               };
             };
 
-            packages.ralph-claude-code = pkgs.callPackage ./pkgs/ralph-claude-code {
-              ralph-claude-code-src = inputs.ralph-claude-code;
-            };
+            packages.ralph-claude-code =
+              pkgs.callPackage ./pkgs/ralph-claude-code {
+                ralph-claude-code-src = inputs.ralph-claude-code;
+              };
 
             packages.beads = pkgs.callPackage ./pkgs/beads { };
             packages.beads-viewer = pkgs.callPackage ./pkgs/beads-viewer { };
-            packages.fix-serena-config = pkgs.callPackage ./pkgs/fix-serena-config { };
+            packages.fix-serena-config =
+              pkgs.callPackage ./pkgs/fix-serena-config { };
             packages.codanna = pkgs.callPackage ./pkgs/codanna { };
           };
         }
