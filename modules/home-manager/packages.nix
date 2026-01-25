@@ -21,6 +21,7 @@
       lsd
       jump
       nodejs
+      devenv
 
       # Git
       gh

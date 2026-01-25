@@ -229,6 +229,7 @@
       set fish_color_cwd_root brred
       set fish_color_status brred
       set fish_color_search_match --background=brblue
+      direnv hook fish | source
     '';
 
     # Login shell initialization
