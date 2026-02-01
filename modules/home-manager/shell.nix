@@ -18,6 +18,10 @@
       [[ ! -r "$P10K_INSTANT_PROMPT" ]] || source "$P10K_INSTANT_PROMPT"
       ZSH_AUTOSUGGEST_STRATEGY=(completion history)
       eval "$(starship init zsh)"
+
+      # Bun global packages
+      export BUN_INSTALL="$HOME/.bun"
+      export PATH="$BUN_INSTALL/bin:$PATH"
     '';
 
     # export ANTHROPIC_API_KEY="$(<"/home/reyhan/.config/sops-nix/secrets/anthropic_api_key")"

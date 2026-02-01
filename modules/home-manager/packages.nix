@@ -19,9 +19,12 @@
       openssl
       jq
       lsd
+      sqlite
       jump
       nodejs
+      bun
       devenv
+      cmake
 
       # Git
       gh

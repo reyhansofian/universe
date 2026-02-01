@@ -170,6 +170,10 @@
       # Add uv tool binaries to PATH
       fish_add_path -g ~/.local/bin
 
+      # Add bun global packages to PATH
+      set -gx BUN_INSTALL "$HOME/.bun"
+      fish_add_path -g $BUN_INSTALL/bin
+
       # Enable VI mode (optional - uncomment if you want vim keybindings)
       # fish_vi_key_bindings
 
