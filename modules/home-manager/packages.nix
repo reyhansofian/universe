@@ -1,5 +1,13 @@
-{ pkgs, lib, config, inputs, ... }: {
-  home.packages = with pkgs;
+{
+  pkgs,
+  lib,
+  config,
+  inputs,
+  ...
+}:
+{
+  home.packages =
+    with pkgs;
     [
       # System
       docker
@@ -32,6 +40,7 @@
       git-lfs
       git
       yadm
+      inputs.self.packages.${pkgs.system}.gitbutler-cli
 
       # AI/LLM Tools
       opencode
@@ -53,10 +62,12 @@
       kittysay
       starship
 
-      python311
-    ] ++ lib.optionals pkgs.stdenv.isDarwin [
+      (lib.lowPrio python311)
+    ]
+    ++ lib.optionals pkgs.stdenv.isDarwin [
       # Add packages only for Darwin (MacOS)
-    ] ++ lib.optionals pkgs.stdenv.isLinux [
+    ]
+    ++ lib.optionals pkgs.stdenv.isLinux [
       # Add packages only for Linux
       xclip
       bruno
