@@ -15,6 +15,10 @@
   wsl.wslConf.network.generateHosts = false;
   wsl.wslConf.automount.options = "metadata,uid=1000,gid=100";
 
+  # GPU support for WSL2
+  hardware.graphics.enable = true;
+  wsl.useWindowsDriver = true;
+
   home-manager.useGlobalPkgs = true;
   home-manager.useUserPackages = true;
 
@@ -28,8 +32,31 @@
   # virtualisation.virtualbox.host.enableExtensionPack = true;
 
   services.dbus.enable = true;
+  services.ollama = {
+    enable = true;
+    acceleration = "cuda";
+    environmentVariables = {
+      OLLAMA_CONTEXT_LENGTH = "16384";
+      OLLAMA_FLASH_ATTENTION = "1";
+      OLLAMA_NEW_ENGINE = "1";
+    };
+  };
+  programs.nix-ld.enable = true;
+  programs.nix-ld.libraries = with pkgs; [
+    stdenv.cc.cc.lib
+    glibc
+    zlib
+  ];
 
-  # environment.systemPackages = [ inputs.nixpkgs-master.claude-code ];
+  environment.systemPackages = with pkgs; [
+    mesa-demos    # provides glxinfo
+    vulkan-tools  # provides vulkaninfo
+    # Build tools for npm native modules
+    gcc
+    gnumake
+    cmake
+  ];
+  environment.sessionVariables.LD_LIBRARY_PATH = "/run/opengl-driver/lib";
   environment.shells = with pkgs; [ fish zsh ];
   # environment.variables = { VAGRANT_WSL_ENABLE_WINDOWS_ACCESS = "1"; };
 

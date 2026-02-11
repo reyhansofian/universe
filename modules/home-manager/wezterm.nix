@@ -40,7 +40,8 @@ let
         "
         echo -n "$file"
       else
-        powershell.exe -NoProfile -Command 'Get-Clipboard' | tr -d '\r'
+        echo "No image found in clipboard" >&2
+        exit 1
       fi
     elif [ -n "$WAYLAND_DISPLAY" ]; then
       types=$(wl-paste --list-types)
@@ -50,7 +51,8 @@ let
         wl-paste > "$file"
         echo -n "$file"
       else
-        wl-paste --no-newline
+        echo "No image found in clipboard" >&2
+        exit 1
       fi
     elif [ -n "$DISPLAY" ]; then
       types=$(xclip -selection clipboard -t TARGETS -o 2>/dev/null || echo "")
@@ -60,7 +62,8 @@ let
         xclip -selection clipboard -t "image/''${ext}" -o > "$file"
         echo -n "$file"
       else
-        xclip -selection clipboard -o
+        echo "No image found in clipboard" >&2
+        exit 1
       fi
     fi
   '';

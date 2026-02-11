@@ -59,6 +59,7 @@
       vi = "nvim";
       py = "python";
       k = "kubectl";
+      clauded = "claude --dangerously-skip-permissions";
     };
 
   };

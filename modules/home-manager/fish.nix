@@ -19,6 +19,7 @@
       # Editor shortcuts
       py = "python";
       k = "kubectl";
+      clauded = "claude --dangerously-skip-permissions";
 
       # Reload shell
       reload = "exec fish";

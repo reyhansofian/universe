@@ -1,4 +1,4 @@
-{ pkgs, ezModules, self, inputs, lib, osConfig, ... }: {
+{ pkgs, config, ezModules, self, inputs, lib, osConfig, ... }: {
   imports = with ezModules;
     [
       fonts
@@ -9,6 +9,7 @@
       ssh
       programs
       tmux
+      wezterm
       inputs.sops.homeManagerModules.sops
     ] ++ lib.optionals (osConfig.networking.hostName == "nixos-asus")
     [ hyprland ];
@@ -30,7 +31,10 @@
       pkgs.fnott
     ];
     stateVersion = "25.05";
-    sessionPath = [ "~/.local/bin" ];
+    sessionPath = [
+      "${config.home.homeDirectory}/.local/bin"
+      "${config.home.homeDirectory}/.cache/npm/global/bin"
+    ];
     homeDirectory = "/home/reyhan";
   };
 
@@ -53,11 +57,10 @@
     blueman-applet.enable = true;
   };
 
-  systemd.user.services.docker-socket =
-    lib.optionalAttrs (osConfig.networking.hostName == "nixos-asus") {
+  systemd.user.services = {
+    docker-socket = lib.optionalAttrs (osConfig.networking.hostName == "nixos-asus") {
       Unit = {
         Description = "Docker Socket";
-        # Requires = [ "docker.service" ];
         After = [ "docker.service" ];
       };
       Service = {
@@ -68,24 +71,19 @@
       Install = { WantedBy = [ "default.target" ]; };
     };
 
-  # systemd.user.services.mbsync.Unit.After = [ "sops-nix.service" ];
-  systemd.user.services.rerun-sops-nix =
-    lib.optionalAttrs (osConfig.networking.hostName != "nixos-asus") {
+    rerun-sops-nix = lib.optionalAttrs (osConfig.networking.hostName != "nixos-asus") {
       Unit = {
         Description = "sops-nix re-activation";
         After = "sops-nix.service";
         Requires = "gpg-agent.service";
       };
-
       Install = { WantedBy = [ "default.target" "multi-user.target" ]; };
-
       Service = {
         Type = "oneshot";
         ExecStart = ''
-          ${
-            pkgs.lib.getExe pkgs.bash
-          } -c "systemctl restart --user sops-nix.service"
+          ${pkgs.lib.getExe pkgs.bash} -c "systemctl restart --user sops-nix.service"
         '';
       };
     };
+  };
 }
