@@ -49,7 +49,6 @@
       uv # Required for Serena MCP
       inputs.self.packages.${pkgs.system}.beads # Distributed git-backed graph issue tracker for AI agents
       inputs.self.packages.${pkgs.system}.beads-viewer # TUI for visualizing Beads task dependencies
-      inputs.self.packages.${pkgs.system}.codanna # Code intelligence for AI assistants
       inputs.self.packages.${pkgs.system}.omp # Oh-my-pi: batteries-included AI coding agent
 
       # Language Servers for Serena MCP

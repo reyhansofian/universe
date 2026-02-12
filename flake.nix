@@ -162,7 +162,6 @@
               packages.beads = pkgs.callPackage ./pkgs/beads { };
               packages.beads-viewer = pkgs.callPackage ./pkgs/beads-viewer { };
               packages.fix-serena-config = pkgs.callPackage ./pkgs/fix-serena-config { };
-              packages.codanna = pkgs.callPackage ./pkgs/codanna { };
               packages.tuicr = pkgs.callPackage ./pkgs/tuicr { };
               packages.omp = pkgs.callPackage ./pkgs/omp { };
             };
