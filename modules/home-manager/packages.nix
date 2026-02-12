@@ -40,7 +40,8 @@
       git-lfs
       git
       yadm
-      inputs.self.packages.${pkgs.system}.gitbutler-cli
+      jujutsu
+      inputs.self.packages.${pkgs.system}.tuicr
 
       # AI/LLM Tools
       opencode

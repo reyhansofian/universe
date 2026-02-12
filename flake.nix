@@ -163,9 +163,7 @@
               packages.beads-viewer = pkgs.callPackage ./pkgs/beads-viewer { };
               packages.fix-serena-config = pkgs.callPackage ./pkgs/fix-serena-config { };
               packages.codanna = pkgs.callPackage ./pkgs/codanna { };
-              packages.gitbutler-cli = pkgs.callPackage ./pkgs/gitbutler-cli {
-                rustPlatform = pkgs.branches.master.rustPlatform;
-              };
+              packages.tuicr = pkgs.callPackage ./pkgs/tuicr { };
             };
         }
       ];
