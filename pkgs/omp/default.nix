@@ -5,6 +5,7 @@
   makeWrapper,
   gcc-unwrapped,
   glibc,
+  bash-language-server,
 }:
 
 let
@@ -39,7 +40,8 @@ stdenv.mkDerivation {
           gcc-unwrapped.lib
           glibc
         ]
-      }"
+      }" \
+      --prefix PATH : "${lib.makeBinPath [ bash-language-server ]}"
   '';
 
   dontStrip = true;
