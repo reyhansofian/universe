@@ -44,7 +44,7 @@
     };
 
     # Claude Code - Auto-updated version with Cachix support
-    claude-code-nix.url = "github:sadjow/claude-code-nix/v2.1.31";
+    claude-code-nix.url = "github:sadjow/claude-code-nix/v2.1.41";
 
     # Ralph for Claude Code - Autonomous development loops
     ralph-claude-code = {
