@@ -16,6 +16,8 @@
       procs
       tree
       ripgrep
+      delta
+      glow
       file
       binutils
       fd
