@@ -50,8 +50,6 @@
       opencode
       gemini-cli
       uv # Required for Serena MCP
-      inputs.self.packages.${pkgs.stdenv.hostPlatform.system}.beads # Distributed git-backed graph issue tracker for AI agents
-      inputs.self.packages.${pkgs.stdenv.hostPlatform.system}.beads-viewer # TUI for visualizing Beads task dependencies
 
       # Language Servers for Serena MCP
       marksman # Markdown LSP

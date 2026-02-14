@@ -153,8 +153,6 @@
                 ralph-claude-code-src = inputs.ralph-claude-code;
               };
 
-            packages.beads = pkgs.callPackage ./pkgs/beads { };
-            packages.beads-viewer = pkgs.callPackage ./pkgs/beads-viewer { };
             packages.fix-serena-config =
               pkgs.callPackage ./pkgs/fix-serena-config { };
             packages.jj-ws = pkgs.callPackage ./pkgs/jj-ws { };
