@@ -139,6 +139,9 @@ EOF
 # Copy agents, prompts, skills, extensions from repo
 PI_ASSETS="$REPO_DIR/pi"
 
+echo "Copying SYSTEM.md..."
+cp "$PI_ASSETS/SYSTEM.md" "$PI_DIR/"
+
 echo "Copying agents..."
 mkdir -p "$PI_DIR/agents"
 cp "$PI_ASSETS"/agents/*.md "$PI_DIR/agents/"
