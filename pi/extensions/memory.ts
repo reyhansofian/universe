@@ -1,209 +1,135 @@
+/**
+ * memory-v2.ts - Simplified memory hook for Pi
+ *
+ * Philosophy: The hook handles what the agent CAN'T do (pre-session recall,
+ * per-input recall, capturing insights from responses). The agent handles
+ * what it does BETTER (deciding what to save deliberately via MCP tools).
+ *
+ * Dependencies:
+ *   - qmd CLI (for searching memory collection)
+ *   - pi CLI in print mode (for background session summarization)
+ *   - memory MCP directory (~/.config/memory/) for direct file writes
+ *
+ * Removed dependencies (vs v1):
+ *   - forgetful-bridge (replaced by qmd CLI + direct filesystem)
+ *   - Ollama (replaced by pi -p with Sonnet for summarization)
+ *   - Queue system (no deferred extraction pipeline)
+ *   - Transcript export (Pi has its own session files)
+ *
+ * Lifecycle hooks:
+ *   1. session_start         → search qmd for project context
+ *   2. before_agent_start    → inject recalled context
+ *   3. input                 → search qmd for per-message recall
+ *   4. agent_end             → capture ★ Insight blocks to memory
+ *   5. session_before_compact → save session checkpoint
+ *   6. session_shutdown      → spawn background summarizer (detached)
+ */
+
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import * as fs from "fs";
 import * as path from "path";
-import * as http from "http";
 import * as crypto from "crypto";
-import { execSync } from "child_process";
+import { execSync, spawn } from "child_process";
 
 // ---------------------------------------------------------------------------
 // Configuration
 // ---------------------------------------------------------------------------
 
 const CONFIG = {
-  BRIDGE_URL: "http://localhost:8021",
-  OLLAMA_URL: "http://localhost:11434",
-  OLLAMA_MODEL: "llama3.2:3b",
-  BRIDGE_TIMEOUT: 15000,
-  OLLAMA_TIMEOUT: 12000,
-  MIN_SCORE: 0.3,
-  PROJECT_MEMORY_LIMIT: 10,
-  GLOBAL_PATTERN_LIMIT: 5,
-  QUERY_LIMIT: 10,
-  AUTO_SAVE_THRESHOLD: 0.65,
-  DISCARD_THRESHOLD: 0.35,
-  MAX_MEMORIES: 5,
-  MIN_SESSION_MESSAGES: 5,
-  QUEUE_DIR: path.join(process.env.HOME || "", ".forgetful", "queue"),
-  EXPORT_DIR: path.join(process.env.HOME || "", ".forgetful", "transcripts"),
-  LOG_FILE: "/tmp/forgetful-hooks.log",
+  /** qmd collection name for memories */
+  MEMORY_COLLECTION: "memory",
+
+  /** Directory where memory MCP stores markdown files */
+  MEMORY_DIR: path.join(process.env.HOME || "", ".config", "memory"),
+
+  /**
+   * Token budget: 2% of 200K context = 4,000 tokens ≈ 16,000 chars.
+   * Split: 60% session start (project context), 40% per-input (recall).
+   * Session start is one-time; per-input repeats but gets compacted.
+   */
+
+  /** Max total chars for project topics at session start (60% of budget) */
+  PROJECT_TOPIC_BUDGET: 8000,
+
+  /** Max total chars for global patterns at session start */
+  GLOBAL_RECALL_BUDGET: 1600,
+
+  /** Max results for global recall search */
+  GLOBAL_RECALL_LIMIT: 5,
+
+  /** Max results for per-input recall */
+  INPUT_RECALL_LIMIT: 5,
+
+  /** Max total chars for per-input recall injection (40% of budget) */
+  INPUT_RECALL_BUDGET: 6400,
+
+  /** Minimum score (0-100) to include a qmd result */
+  MIN_SCORE: 40,
+
+  /** Timeout for qmd CLI calls (ms) */
+  QMD_TIMEOUT: 5000,
+
+  /** Max chars of memory content to include per search result */
+  MAX_CONTENT_CHARS: 400,
+
+  /** Model for background session summarization (via pi -p) */
+  SUMMARIZER_MODEL: "anthropic/claude-sonnet-4-20250514:off",
+
+  /** Minimum session messages to trigger summarization */
+  MIN_MESSAGES_FOR_SUMMARY: 5,
+
+  /** Temp directory for passing session data to background summarizer */
+  TEMP_DIR: path.join(process.env.HOME || "", ".cache", "pi-memory"),
+
+  /** Log file for debugging */
+  LOG_FILE: "/tmp/pi-memory-hook.log",
+
+  /** Skip patterns for user prompts that don't need recall */
+  SKIP_PATTERNS: [
+    /^\/\w+/,                 // slash commands
+    /^(hi|hello|hey|thanks|ok|yes|no|sure|continue|go on|done|quit|exit)$/i,
+    /^.{0,15}$/,              // very short messages
+    /^\s*$/,                  // empty
+  ],
 };
-
-// Skip patterns for user prompts that don't need memory lookup
-const SKIP_PATTERNS = [
-  /^\/\w+/,
-  /^(hi|hello|hey|thanks|ok|yes|no|continue|go on|done|quit|exit)$/i,
-  /^.{0,10}$/,
-  /^\s*$/,
-];
-
-// Pattern extraction regexes for agent responses
-const AGENT_PATTERNS: Record<string, RegExp[]> = {
-  explanations: [
-    /\bthe (?:issue|problem|bug) (?:is|was) (?:that\s+)?(.+?)\.(?:\s|$)/gi,
-    /\bthis (?:happens|occurs|fails) because\s+(.+?)\.(?:\s|$)/gi,
-    /\bthe root cause(?:\s+is)?:?\s*(.+?)\.(?:\s|$)/gi,
-  ],
-  solutions: [
-    /\b(?:I\s+)?(?:fixed|resolved|solved|updated|changed)(?:\s+(?:this|it|the))?\s+(?:by\s+)?(.+?)\.(?:\s|$)/gi,
-    /\bthe (?:fix|solution)(?:\s+is)?:?\s*(.+?)\.(?:\s|$)/gi,
-    /\b(?:added|removed|updated|modified)\s+(.+?)\s+(?:to|from|in)\s+(.+?)\.(?:\s|$)/gi,
-  ],
-  architecture: [
-    /\bthis (?:pattern|approach|design)\s+(.+?)\.(?:\s|$)/gi,
-    /\bthe (?:better|correct|proper|right) (?:way|approach)(?:\s+is)?\s+(.+?)\.(?:\s|$)/gi,
-  ],
-  warnings: [
-    /\b(?:note|important|careful|watch out|warning):?\s*(.+?)\.(?:\s|$)/gi,
-    /\bthis (?:won't|doesn't|can't|will not) work (?:because|if|when|unless)\s+(.+?)\.(?:\s|$)/gi,
-  ],
-  failures: [
-    /\bthis (?:didn't|doesn't|won't) work because\s+(.+?)\.(?:\s|$)/gi,
-    /\b(?:tried|attempted)\s+(.+?)\s+but\s+(.+?)\.(?:\s|$)/gi,
-  ],
-  system: [
-    /\b(\w+(?:\s+\w+)?)\s+(?:has|includes?|provides?|supports?)\s+(?:its own|a built-in)\s+(.+?)\.(?:\s|$)/gi,
-  ],
-};
-
-// LLM extraction prompt (shared by compact + shutdown)
-const EXTRACTION_PROMPT = `Extract knowledge worth remembering from this coding session. Return JSON array only.
-
-Categories:
-- decision: Technical choices with reasoning
-- solution: Concrete fixes that could be reapplied
-- pattern: Reusable techniques or approaches
-- learning: New insights or gotchas discovered
-- architecture: Design decisions or structural insights
-- system: Facts about tools/systems being used
-- failure: What didn't work and why
-- preference: User preferences for future reference
-
-Rules:
-- ONLY extract information EXPLICITLY STATED in the session text
-- Extract SPECIFIC knowledge - names, tools, configurations
-- Each item must be self-contained
-- Maximum 5 items
-- Return empty array [] if nothing worth remembering
-
-Format: [{"type": "<category>", "content": "<extracted text>"}]
-
-Session text:
-"""
-{text}
-"""
-
-JSON:`;
-
-// Type-specific scoring prompts
-const SCORING_PROMPTS: Record<string, string> = {
-  decision: `Score if this is a clear technical decision worth remembering (0.0-1.0). Only output the number.\nText: "{content}"\nScore:`,
-  solution: `Score if this describes a concrete reapplyable solution (0.0-1.0). Only output the number.\nText: "{content}"\nScore:`,
-  pattern: `Score if this describes a reusable technique (0.0-1.0). Only output the number.\nText: "{content}"\nScore:`,
-  learning: `Score if this is a specific insight or gotcha (0.0-1.0). Only output the number.\nText: "{content}"\nScore:`,
-  architecture: `Score if this describes a reusable architectural decision (0.0-1.0). Only output the number.\nText: "{content}"\nScore:`,
-  system: `Score if this is a useful fact about a tool or system (0.0-1.0). Only output the number.\nText: "{content}"\nScore:`,
-  failure: `Score if this describes what didn't work and why (0.0-1.0). Only output the number.\nText: "{content}"\nScore:`,
-  preference: `Score if this is a clear user preference (0.0-1.0). Only output the number.\nText: "{content}"\nScore:`,
-};
-
-const DEFAULT_SCORING_PROMPT = `Score if this is valuable technical knowledge (0.0-1.0). Only output the number.\nText: "{content}"\nScore:`;
 
 // ---------------------------------------------------------------------------
-// Helpers
+// Logging
 // ---------------------------------------------------------------------------
 
 function log(tag: string, msg: string) {
   try {
     fs.appendFileSync(
       CONFIG.LOG_FILE,
-      `${new Date().toISOString()} [pi:${tag}] ${msg}\n`
+      `${new Date().toISOString()} [memory:${tag}] ${msg}\n`
     );
-  } catch {}
+  } catch { }
 }
 
-function httpPost(
-  urlString: string,
-  body: unknown,
-  timeout = CONFIG.BRIDGE_TIMEOUT
-): Promise<any> {
-  return new Promise((resolve) => {
-    const postData = JSON.stringify(body);
-    const url = new URL(urlString);
+// ---------------------------------------------------------------------------
+// Project detection
+// ---------------------------------------------------------------------------
 
-    const options: http.RequestOptions = {
-      hostname: url.hostname,
-      port: url.port,
-      path: url.pathname,
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Content-Length": Buffer.byteLength(postData),
-      },
-      timeout,
-    };
-
-    const req = http.request(options, (res) => {
-      let data = "";
-      res.on("data", (chunk) => (data += chunk));
-      res.on("end", () => {
-        try {
-          resolve(JSON.parse(data));
-        } catch {
-          resolve(null);
-        }
-      });
-    });
-
-    req.on("error", () => resolve(null));
-    req.on("timeout", () => {
-      req.destroy();
-      resolve(null);
-    });
-    req.write(postData);
-    req.end();
-  });
-}
-
-function detectProject(cwd: string): {
-  name: string;
-  forgetfulId: number | null;
-  repoName: string | null;
-} {
+function detectProject(cwd: string): { name: string; repoName: string | null } {
   let name: string | null = null;
-  let forgetfulId: number | null = null;
   let repoName: string | null = null;
 
-  // Priority 1: .forgetful/project.json
   try {
-    const fp = path.join(cwd, ".forgetful", "project.json");
-    if (fs.existsSync(fp)) {
-      const proj = JSON.parse(fs.readFileSync(fp, "utf8"));
-      if (proj.name) name = proj.name;
-      if (proj.forgetful_id) forgetfulId = proj.forgetful_id;
-      if (proj.repo_name) repoName = proj.repo_name;
-    }
-  } catch {}
-
-  // Priority 2: git remote
-  if (!repoName) {
-    try {
-      const remote = execSync("git config --get remote.origin.url", {
-        cwd,
-        encoding: "utf8",
-        timeout: 1000,
-        stdio: ["pipe", "pipe", "pipe"],
-      }).trim();
-      if (remote) {
-        const match = remote.match(/[/:]([^/]+\/[^/]+?)(?:\.git)?$/);
-        if (match?.[1]) {
-          repoName = match[1];
-          if (!name) name = repoName.split("/").pop() || null;
-        }
+    const remote = execSync("git config --get remote.origin.url", {
+      cwd,
+      encoding: "utf8",
+      timeout: 1000,
+      stdio: ["pipe", "pipe", "pipe"],
+    }).trim();
+    if (remote) {
+      const match = remote.match(/[/:]([^/]+\/[^/]+?)(?:\.git)?$/);
+      if (match?.[1]) {
+        repoName = match[1];
+        name = repoName.split("/").pop() || null;
       }
-    } catch {}
-  }
+    }
+  } catch { }
 
-  // Priority 3: package.json
   if (!name) {
     try {
       const pkgPath = path.join(cwd, "package.json");
@@ -211,45 +137,412 @@ function detectProject(cwd: string): {
         const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf8"));
         if (pkg.name) name = pkg.name;
       }
-    } catch {}
+    } catch { }
   }
 
-  return {
-    name: name || path.basename(cwd),
-    forgetfulId,
-    repoName,
-  };
+  return { name: name || path.basename(cwd), repoName };
 }
 
-function loadLocalContext(cwd: string): {
-  overview: string | null;
-  decisions: string | null;
-} {
-  let overview: string | null = null;
-  let decisions: string | null = null;
+// ---------------------------------------------------------------------------
+// qmd CLI wrapper
+// ---------------------------------------------------------------------------
+
+interface QmdResult {
+  path: string;
+  score: number;
+  title: string;
+  snippet: string;
+}
+
+function qmdSearch(query: string, limit: number): QmdResult[] {
+  try {
+    // Truncate query to avoid E2BIG (ARG_MAX) on long user messages
+    const safeQuery = query.slice(0, 500).replace(/\n/g, " ").trim();
+    if (!safeQuery) return [];
+
+    const raw = execSync(
+      `qmd search ${JSON.stringify(safeQuery)} -c ${CONFIG.MEMORY_COLLECTION} -n ${limit} --files`,
+      {
+        encoding: "utf8",
+        timeout: CONFIG.QMD_TIMEOUT,
+        stdio: ["pipe", "pipe", "pipe"],
+      }
+    ).trim();
+
+    if (!raw) return [];
+
+    const results: QmdResult[] = [];
+    for (const line of raw.split("\n")) {
+      if (!line.trim()) continue;
+      // Format: #docid,score,qmd://memory/path/to/file.md
+      const parts = line.split(",");
+      if (parts.length < 3) continue;
+
+      const score = parseFloat(parts[1]) * 100;
+      const filePath = parts.slice(2).join(",").trim();
+      if (score < CONFIG.MIN_SCORE) continue;
+
+      results.push({ path: filePath, score, title: "", snippet: "" });
+    }
+
+    // Fetch content for top results
+    for (const result of results) {
+      try {
+        const content = execSync(
+          `qmd get ${JSON.stringify(result.path)} -l 20`,
+          {
+            encoding: "utf8",
+            timeout: 3000,
+            stdio: ["pipe", "pipe", "pipe"],
+          }
+        ).trim();
+
+        const titleMatch = content.match(/^title::\s*(.+)$/m);
+        if (titleMatch) result.title = titleMatch[1].trim();
+
+        const tagsMatch = content.match(/^tags::\s*(.+)$/m);
+        const tags = tagsMatch ? tagsMatch[1].trim() : "";
+
+        const bodyStart = content.indexOf("\n\n");
+        const body = bodyStart >= 0 ? content.slice(bodyStart + 2) : content;
+
+        result.snippet = body.slice(0, CONFIG.MAX_CONTENT_CHARS).trim();
+        if (tags) result.snippet = `[${tags}]\n${result.snippet}`;
+      } catch { }
+    }
+
+    return results;
+  } catch (e: any) {
+    log("qmd", `Search failed: ${e.message}`);
+    return [];
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Direct project file reading (for session start)
+// ---------------------------------------------------------------------------
+
+interface ProjectTopic {
+  filename: string;
+  title: string;
+  content: string;
+}
+
+/**
+ * Reads project topic files, fitting within a character budget.
+ * Files are sorted by last modified (most recent first) so the most
+ * recently updated topics get priority if the budget is tight.
+ * Content is truncated per-file if needed to fit more topics.
+ */
+function readProjectTopics(project: string): ProjectTopic[] {
+  const safeProject = project.replace(/[^a-zA-Z0-9_-]/g, "-");
+  const projectsDir = path.join(CONFIG.MEMORY_DIR, "projects");
+
+  if (!fs.existsSync(projectsDir)) return [];
+
+  const topics: ProjectTopic[] = [];
 
   try {
-    const p = path.join(cwd, ".forgetful", "context.md");
-    if (fs.existsSync(p)) overview = fs.readFileSync(p, "utf8").trim();
-  } catch {}
+    const files = fs.readdirSync(projectsDir)
+      .filter((f) => f.startsWith(`${safeProject}--`) && f.endsWith(".md"));
+
+    if (files.length === 0) return [];
+
+    // Sort by modification time (most recently updated first)
+    const withStats = files.map((f) => {
+      const fp = path.join(projectsDir, f);
+      try {
+        return { file: f, mtime: fs.statSync(fp).mtimeMs };
+      } catch {
+        return { file: f, mtime: 0 };
+      }
+    });
+    withStats.sort((a, b) => b.mtime - a.mtime);
+
+    // Read files within budget
+    let budgetLeft = CONFIG.PROJECT_TOPIC_BUDGET;
+    const maxPerFile = files.length > 5
+      ? Math.floor(CONFIG.PROJECT_TOPIC_BUDGET / files.length)
+      : 600; // generous if few files
+
+    for (const { file } of withStats) {
+      if (budgetLeft <= 100) break; // not enough room for meaningful content
+
+      try {
+        const raw = fs.readFileSync(path.join(projectsDir, file), "utf8");
+
+        const titleMatch = raw.match(/^title::\s*(.+)$/m);
+        const title = titleMatch ? titleMatch[1].trim() : file;
+
+        const bodyStart = raw.indexOf("\n\n");
+        let body = bodyStart >= 0 ? raw.slice(bodyStart + 2).trim() : raw;
+
+        if (body.length < 20) continue;
+
+        // Truncate to fit budget
+        const allowance = Math.min(body.length, maxPerFile, budgetLeft);
+        if (body.length > allowance) {
+          body = body.slice(0, allowance) + "\n[...truncated]";
+        }
+
+        topics.push({ filename: file, title, content: body });
+        budgetLeft -= body.length;
+      } catch { }
+    }
+
+    if (budgetLeft < CONFIG.PROJECT_TOPIC_BUDGET) {
+      log("read-topics", `Loaded ${topics.length}/${files.length} topics (${CONFIG.PROJECT_TOPIC_BUDGET - budgetLeft} chars used)`);
+    }
+  } catch (e: any) {
+    log("read-topics", `Failed: ${e.message}`);
+  }
+
+  return topics;
+}
+
+// ---------------------------------------------------------------------------
+// Formatting
+// ---------------------------------------------------------------------------
+
+function formatStartContext(
+  project: string,
+  projectTopics: ProjectTopic[],
+  globalMemories: QmdResult[]
+): string | null {
+  if (projectTopics.length === 0 && globalMemories.length === 0) return null;
+
+  let output = `<memory_context>\n## Project Memory: ${project}\n\n`;
+
+  if (projectTopics.length > 0) {
+    for (const topic of projectTopics) {
+      output += `### ${topic.title}\n`;
+      output += `${topic.content}\n\n`;
+    }
+  }
+
+  if (globalMemories.length > 0) {
+    output += `### Related Patterns (cross-project)\n`;
+    let globalChars = 0;
+    for (const mem of globalMemories) {
+      const entry = `- **${mem.title || mem.path}** (${mem.score.toFixed(0)}%)\n${mem.snippet ? `  ${mem.snippet.replace(/\n/g, "\n  ")}\n` : ""}\n`;
+      if (globalChars + entry.length > CONFIG.GLOBAL_RECALL_BUDGET) break;
+      output += entry;
+      globalChars += entry.length;
+    }
+  }
+
+  output += `</memory_context>`;
+  return output;
+}
+
+function formatInputRecall(memories: QmdResult[]): string | null {
+  if (memories.length === 0) return null;
+
+  let output = "<memory_recall>\n";
+  let charsUsed = 0;
+
+  for (const mem of memories) {
+    const line = `- **${mem.title || mem.path}** (${mem.score.toFixed(0)}%): ${(mem.snippet || "").split("\n")[0].slice(0, 150)}`;
+
+    if (charsUsed + line.length > CONFIG.INPUT_RECALL_BUDGET) break;
+
+    output += line + "\n";
+    charsUsed += line.length;
+  }
+
+  if (charsUsed === 0) return null;
+
+  output += "</memory_recall>";
+  return output;
+}
+
+// ---------------------------------------------------------------------------
+// Insight extraction from agent responses
+// ---------------------------------------------------------------------------
+
+/**
+ * Extracts ★ Insight blocks from agent responses.
+ *
+ * Matches the pattern:
+ *   ★ Insight - <title> ─────
+ *   [content lines]
+ *   ─────────────────────────
+ */
+function extractInsights(text: string): Array<{ title: string; content: string }> {
+  const insights: Array<{ title: string; content: string }> = [];
+
+  // Match insight blocks: ★ ... ─── through closing ───
+  const pattern = /[★✦]\s*(?:Insight)\s*[-─—:]+\s*([^\n─]+)─*\n([\s\S]*?)─{5,}/gi;
+  let match: RegExpExecArray | null;
+
+  while ((match = pattern.exec(text)) !== null) {
+    const title = match[1].trim().replace(/\s*─+$/, "").trim();
+    const content = match[2].trim();
+
+    // Skip empty or trivial insights
+    if (content.length < 30) continue;
+
+    insights.push({ title, content });
+  }
+
+  return insights;
+}
+
+/**
+ * Saves an insight directly to the memory directory as a markdown file.
+ * Uses the same frontmatter format as the memory MCP so qmd can index it.
+ */
+function saveInsightToMemory(
+  title: string,
+  content: string,
+  project: string,
+  repoName: string | null
+): boolean {
+  try {
+    const category = categorizeInsight(content);
+    const dir = path.join(CONFIG.MEMORY_DIR, category);
+
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+
+    // Generate a slug from the title
+    const slug = title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "")
+      .slice(0, 60);
+
+    const filename = `${slug}.md`;
+    const filepath = path.join(dir, filename);
+
+    // Skip if a file with this name already exists (likely duplicate)
+    if (fs.existsSync(filepath)) {
+      log("insight", `Skipped duplicate: ${filename}`);
+      return false;
+    }
+
+    const date = new Date().toISOString().split("T")[0];
+    const tags = [`#${project}`, "#insight", "#auto-extracted"];
+    if (repoName) tags.push(`#${repoName.replace(/\//g, "-")}`);
+
+    const md = [
+      `title:: ${title}`,
+      `tags:: ${tags.join(", ")}`,
+      `created:: [[${date}]]`,
+      `importance:: 6`,
+      `type:: insight`,
+      repoName ? `source-repo:: ${repoName}` : null,
+      "",
+      content,
+      "",
+    ]
+      .filter((line) => line !== null)
+      .join("\n");
+
+    fs.writeFileSync(filepath, md);
+    log("insight", `Saved: ${category}/${filename}`);
+    return true;
+  } catch (e: any) {
+    log("insight", `Failed to save: ${e.message}`);
+    return false;
+  }
+}
+
+/**
+ * Simple keyword-based categorization matching the memory MCP's categories.
+ */
+function categorizeInsight(content: string): string {
+  const lower = content.toLowerCase();
+
+  if (/\b(api|endpoint|route|request|response|rest|graphql|grpc)\b/.test(lower))
+    return "api";
+  if (/\b(architect|design|pattern|structure|layer|module|component)\b/.test(lower))
+    return "architecture";
+  if (/\b(auth|token|jwt|oauth|session|permission|credential)\b/.test(lower))
+    return "auth";
+  if (/\b(config|env|setting|variable|yaml|toml|dotenv)\b/.test(lower))
+    return "config";
+  if (/\b(database|sql|query|migration|schema|table|index|postgres|mysql)\b/.test(lower))
+    return "database";
+  if (/\b(deploy|docker|ci|cd|pipeline|infra|terraform|k8s|kubernetes)\b/.test(lower))
+    return "infrastructure";
+  if (/\b(test|spec|assert|mock|fixture|coverage|jest|vitest|pytest)\b/.test(lower))
+    return "testing";
+
+  return "workflows"; // default bucket
+}
+
+// ---------------------------------------------------------------------------
+// Session checkpoint (for compact events)
+// ---------------------------------------------------------------------------
+
+/**
+ * Saves a lightweight checkpoint of the session topics to memory.
+ * No LLM needed - just extracts file paths and key terms mentioned.
+ */
+function saveSessionCheckpoint(
+  messages: Array<{ role: string; content: string }>,
+  project: string,
+  repoName: string | null
+): boolean {
+  if (messages.length < 5) return false;
 
   try {
-    const p = path.join(cwd, ".forgetful", "decisions.md");
-    if (fs.existsSync(p)) decisions = fs.readFileSync(p, "utf8").trim();
-  } catch {}
+    // Collect mentioned file paths
+    const allText = messages.map((m) => m.content).join("\n");
+    const files = new Set<string>();
+    const filePattern = /(?:^|\s)([\w./\\-]+\.(?:ts|js|py|go|rs|yaml|yml|json|md|sql|tsx|jsx))\b/g;
+    let match: RegExpExecArray | null;
+    while ((match = filePattern.exec(allText)) !== null) {
+      files.add(match[1]);
+    }
 
-  return { overview, decisions };
+    // Extract user's main topics (first line of each user message)
+    const topics = messages
+      .filter((m) => m.role === "user")
+      .map((m) => m.content.split("\n")[0].slice(0, 100))
+      .filter((t) => t.length > 15)
+      .slice(-5); // last 5 topics
+
+    if (topics.length === 0 && files.size === 0) return false;
+
+    const dir = path.join(CONFIG.MEMORY_DIR, "workflows");
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+
+    const date = new Date().toISOString().split("T")[0];
+    const time = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+    const filename = `session-checkpoint-${time}.md`;
+    const filepath = path.join(dir, filename);
+
+    const md = [
+      `title:: Session Checkpoint: ${project} (${date})`,
+      `tags:: #${project}, #session-checkpoint, #auto-extracted`,
+      `created:: [[${date}]]`,
+      `importance:: 4`,
+      `type:: checkpoint`,
+      repoName ? `source-repo:: ${repoName}` : null,
+      "",
+      `## Topics Discussed`,
+      ...topics.map((t) => `- ${t}`),
+      "",
+      files.size > 0 ? `## Files Referenced` : null,
+      ...(files.size > 0 ? [...files].slice(0, 15).map((f) => `- \`${f}\``) : []),
+      "",
+    ]
+      .filter((line) => line !== null)
+      .join("\n");
+
+    fs.writeFileSync(filepath, md);
+    log("checkpoint", `Saved: ${filename} (${topics.length} topics, ${files.size} files)`);
+    return true;
+  } catch (e: any) {
+    log("checkpoint", `Failed: ${e.message}`);
+    return false;
+  }
 }
 
-function cleanText(text: string): string {
-  return text
-    .replace(/<system-reminder>[\s\S]*?<\/system-reminder>/gi, "")
-    .replace(/```[\s\S]*?```/g, "")
-    .replace(/^\|.*$/gm, "")
-    .replace(/https?:\/\/\S+/g, "")
-    .replace(/<[^>]+>/g, "")
-    .trim();
-}
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
 
 function hashContent(content: string): string {
   return crypto.createHash("md5").update(content).digest("hex");
@@ -257,551 +550,13 @@ function hashContent(content: string): string {
 
 function shouldSkip(prompt: string): boolean {
   if (!prompt || typeof prompt !== "string") return true;
-  return SKIP_PATTERNS.some((p) => p.test(prompt.trim()));
+  return CONFIG.SKIP_PATTERNS.some((p) => p.test(prompt.trim()));
 }
-
-// ---------------------------------------------------------------------------
-// Bridge API helpers
-// ---------------------------------------------------------------------------
-
-async function bridgeRecall(
-  query: string,
-  limit: number,
-  projectId?: number | null
-): Promise<any[]> {
-  const body: any = { query, limit };
-  if (projectId) body.current_project_id = projectId;
-  const result = await httpPost(`${CONFIG.BRIDGE_URL}/recall`, body);
-  return Array.isArray(result) ? result : [];
-}
-
-async function bridgeBatchRecall(
-  queries: Array<{ query: string; limit: number }>,
-  projectId?: number | null
-): Promise<any[][]> {
-  const body: any = { queries, current_project_id: projectId || null };
-  const result = await httpPost(
-    `${CONFIG.BRIDGE_URL}/recall/batch`,
-    body,
-    CONFIG.BRIDGE_TIMEOUT
-  );
-  return Array.isArray(result) ? result : queries.map(() => []);
-}
-
-async function bridgeEnsureProject(
-  name: string,
-  repoName?: string | null
-): Promise<number | null> {
-  const body: any = { name };
-  if (repoName) body.repo_name = repoName;
-  const result = await httpPost(`${CONFIG.BRIDGE_URL}/project/ensure`, body);
-  return result?.id || null;
-}
-
-async function bridgeStore(memory: any, projectIds?: number[]): Promise<any> {
-  const body: any = {
-    title: memory.title,
-    content: memory.content,
-    context: memory.context || "Auto-extracted by pi memory extension",
-    tags: memory.tags,
-    keywords: memory.keywords,
-    importance: memory.importance,
-  };
-  if (projectIds?.length) body.project_ids = projectIds;
-  return httpPost(`${CONFIG.BRIDGE_URL}/store`, body);
-}
-
-async function bridgeCheckDuplicate(content: string): Promise<boolean> {
-  const result = await httpPost(`${CONFIG.BRIDGE_URL}/check-duplicate`, {
-    content,
-    threshold: 0.85,
-  });
-  return result?.isDuplicate === true;
-}
-
-async function bridgeLink(
-  memoryId: number,
-  relatedIds: number[]
-): Promise<void> {
-  await httpPost(`${CONFIG.BRIDGE_URL}/link`, {
-    memory_id: memoryId,
-    related_ids: relatedIds,
-  });
-}
-
-// ---------------------------------------------------------------------------
-// Ollama helpers (for extraction + scoring)
-// ---------------------------------------------------------------------------
-
-async function ollamaGenerate(
-  prompt: string,
-  maxTokens = 2000,
-  timeout = CONFIG.OLLAMA_TIMEOUT
-): Promise<string | null> {
-  const result = await httpPost(
-    `${CONFIG.OLLAMA_URL}/api/generate`,
-    {
-      model: CONFIG.OLLAMA_MODEL,
-      prompt,
-      stream: false,
-      options: { temperature: 0.3, num_predict: maxTokens },
-    },
-    timeout
-  );
-  return result?.response?.trim() || null;
-}
-
-async function extractWithLLM(
-  text: string,
-  sessionText: string
-): Promise<Array<{ type: string; content: string }>> {
-  const prompt = EXTRACTION_PROMPT.replace("{text}", text.slice(0, 4000));
-  const response = await ollamaGenerate(prompt, 2500, CONFIG.OLLAMA_TIMEOUT * 2);
-  if (!response) return [];
-
-  let parsed: any[] | null = null;
-
-  // Try direct parse
-  const jsonMatch = response.match(/\[[\s\S]*\]/);
-  if (jsonMatch) {
-    try {
-      parsed = JSON.parse(jsonMatch[0]);
-    } catch {}
-  }
-
-  // Try repairing truncated JSON
-  if (!parsed) {
-    const start = response.indexOf("[");
-    if (start >= 0) {
-      const truncated = response.slice(start);
-      const lastBrace = truncated.lastIndexOf("}");
-      if (lastBrace > 0) {
-        try {
-          parsed = JSON.parse(truncated.slice(0, lastBrace + 1) + "]");
-        } catch {}
-      }
-    }
-  }
-
-  if (!Array.isArray(parsed)) return [];
-
-  // Filter valid items
-  const valid = parsed.filter(
-    (item) =>
-      item.type &&
-      item.content &&
-      typeof item.content === "string" &&
-      item.content.length >= 20
-  );
-
-  // Grounding check - reject hallucinated content
-  return valid.filter((item) => {
-    const words = item.content
-      .toLowerCase()
-      .replace(/[^a-z0-9\s]/g, " ")
-      .split(/\s+/)
-      .filter((w: string) => w.length >= 4);
-    if (words.length === 0) return true;
-    const sessionLower = sessionText.toLowerCase();
-    const found = words.filter((w: string) => sessionLower.includes(w));
-    return found.length / words.length >= 0.5;
-  });
-}
-
-async function scoreCandidate(
-  content: string,
-  type: string
-): Promise<number> {
-  const template = SCORING_PROMPTS[type] || DEFAULT_SCORING_PROMPT;
-  const prompt = template.replace("{content}", content.slice(0, 200));
-  const response = await ollamaGenerate(prompt, 10, 5000);
-  if (!response) return 0.5;
-
-  const match = response.match(/([0-9]*\.?[0-9]+)/);
-  if (match) {
-    const score = parseFloat(match[1]);
-    return isNaN(score) ? 0.5 : Math.max(0, Math.min(1, score));
-  }
-  return 0.5;
-}
-
-// ---------------------------------------------------------------------------
-// Formatting
-// ---------------------------------------------------------------------------
-
-function formatMemorySection(title: string, memories: any[]): string {
-  const filtered = memories.filter((m) => (m.score || 0) >= CONFIG.MIN_SCORE);
-  if (filtered.length === 0) return "";
-
-  let output = `### ${title}\n`;
-  for (const mem of filtered) {
-    const score = (mem.score || 0).toFixed(2);
-    output += `- **[${score}] ${mem.title || "Untitled"}**\n`;
-    if (mem.tags?.length) output += `  Tags: ${mem.tags.join(", ")}\n`;
-    output += `  ${mem.content || ""}\n\n`;
-  }
-  return output;
-}
-
-function formatProjectContext(
-  project: string,
-  projectMemories: any[],
-  globalPatterns: any[],
-  localContext: { overview: string | null; decisions: string | null }
-): string | null {
-  const hasPM = projectMemories.some((m) => (m.score || 0) >= CONFIG.MIN_SCORE);
-  const hasGP = globalPatterns.some((m) => (m.score || 0) >= CONFIG.MIN_SCORE);
-  const hasLocal = localContext.overview || localContext.decisions;
-
-  if (!hasPM && !hasGP && !hasLocal) return null;
-
-  let output = `<project_context>\n## Project: ${project}\n\n`;
-  if (localContext.overview)
-    output += `### Project Overview\n${localContext.overview}\n\n`;
-  if (localContext.decisions)
-    output += `### Local Decisions Log\n${localContext.decisions}\n\n`;
-  output += formatMemorySection("Key Decisions & Architecture", projectMemories);
-  output += formatMemorySection("Relevant Patterns", globalPatterns);
-  output += `---\nThis context was loaded automatically at session start.\n</project_context>`;
-  return output;
-}
-
-function formatRecallResults(memories: any[]): string | null {
-  const filtered = memories.filter((m) => (m.score || 0) >= CONFIG.MIN_SCORE);
-  if (filtered.length === 0) return null;
-
-  let output =
-    "<memory_context>\n## Relevant Knowledge from Memory\n\n";
-  for (const mem of filtered.slice(0, 8)) {
-    const score = (mem.score || 0).toFixed(2);
-    output += `- **[${score}] ${mem.title || "Untitled"}**\n  ${
-      (mem.content || "").slice(0, 150)
-    }\n\n`;
-  }
-  output +=
-    "---\n*Use this context to inform your approach.*\n</memory_context>";
-  return output;
-}
-
-// ---------------------------------------------------------------------------
-// Pattern extraction (from agent responses)
-// ---------------------------------------------------------------------------
-
-function extractPatterns(
-  text: string
-): Array<{ type: string; content: string }> {
-  const candidates: Array<{ type: string; content: string }> = [];
-
-  for (const [type, patterns] of Object.entries(AGENT_PATTERNS)) {
-    for (const pattern of patterns) {
-      const regex = new RegExp(pattern.source, pattern.flags);
-      let match: RegExpExecArray | null;
-      while ((match = regex.exec(text)) !== null) {
-        const extracted = match
-          .slice(1)
-          .filter(Boolean)
-          .join(" - ");
-        if (extracted && extracted.length >= 20 && extracted.length < 500) {
-          candidates.push({ type, content: extracted.trim() });
-        }
-      }
-    }
-  }
-
-  // Deduplicate
-  const seen = new Set<string>();
-  return candidates
-    .filter((c) => {
-      if (seen.has(c.content)) return false;
-      seen.add(c.content);
-      return true;
-    })
-    .slice(0, 5);
-}
-
-// ---------------------------------------------------------------------------
-// Queue management (for pattern extraction -> session end pipeline)
-// ---------------------------------------------------------------------------
-
-function queueCandidates(
-  candidates: Array<{ type: string; content: string }>,
-  sessionId: string,
-  project: string
-) {
-  if (candidates.length === 0) return;
-  try {
-    if (!fs.existsSync(CONFIG.QUEUE_DIR))
-      fs.mkdirSync(CONFIG.QUEUE_DIR, { recursive: true });
-
-    const queueFile = path.join(CONFIG.QUEUE_DIR, `${sessionId}.jsonl`);
-    const lines = candidates
-      .map((c) =>
-        JSON.stringify({ ...c, project, queued_at: new Date().toISOString() })
-      )
-      .join("\n") + "\n";
-
-    fs.appendFileSync(queueFile, lines);
-    log("queue", `Queued ${candidates.length} candidates`);
-  } catch (e: any) {
-    log("queue", `Failed: ${e.message}`);
-  }
-}
-
-function readQueue(sessionId: string): Array<{ type: string; content: string; project?: string }> {
-  const queueFile = path.join(CONFIG.QUEUE_DIR, `${sessionId}.jsonl`);
-  if (!fs.existsSync(queueFile)) return [];
-  try {
-    return fs
-      .readFileSync(queueFile, "utf8")
-      .trim()
-      .split("\n")
-      .filter((l) => l.trim())
-      .map((l) => { try { return JSON.parse(l); } catch { return null; } })
-      .filter(Boolean);
-  } catch {
-    return [];
-  }
-}
-
-function cleanupQueue(sessionId: string) {
-  try {
-    const f = path.join(CONFIG.QUEUE_DIR, `${sessionId}.jsonl`);
-    if (fs.existsSync(f)) fs.unlinkSync(f);
-  } catch {}
-}
-
-// ---------------------------------------------------------------------------
-// Transcript export
-// ---------------------------------------------------------------------------
-
-function exportSessionAsMarkdown(
-  messages: Array<{ role: string; content: string }>,
-  sessionId: string,
-  reason: string
-): string | null {
-  try {
-    if (!fs.existsSync(CONFIG.EXPORT_DIR))
-      fs.mkdirSync(CONFIG.EXPORT_DIR, { recursive: true });
-
-    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-    const exportPath = path.join(
-      CONFIG.EXPORT_DIR,
-      `${sessionId}-${reason}-${timestamp}.md`
-    );
-
-    let md = `# Session Transcript (${reason})\n\n`;
-    md += `- Session ID: ${sessionId}\n`;
-    md += `- Exported at: ${new Date().toISOString()}\n\n---\n\n`;
-
-    for (const msg of messages) {
-      const role = msg.role === "user" ? "User" : "Assistant";
-      md += `## ${role}\n\n${msg.content}\n\n`;
-    }
-
-    fs.writeFileSync(exportPath, md);
-    log("export", `Exported transcript to ${exportPath}`);
-    return exportPath;
-  } catch (e: any) {
-    log("export", `Failed: ${e.message}`);
-    return null;
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Save pipeline (used by compact + shutdown)
-// ---------------------------------------------------------------------------
-
-async function savePipeline(
-  memories: Array<{
-    title: string;
-    content: string;
-    tags: string[];
-    keywords: string[];
-    confidence: number;
-    importance: number;
-  }>,
-  projectIds: number[],
-  cwd: string
-) {
-  const high = memories.filter((m) => m.confidence >= CONFIG.AUTO_SAVE_THRESHOLD);
-  const low = memories.filter(
-    (m) =>
-      m.confidence >= CONFIG.DISCARD_THRESHOLD &&
-      m.confidence < CONFIG.AUTO_SAVE_THRESHOLD
-  );
-
-  let saved = 0;
-  let dupes = 0;
-
-  for (const memory of high) {
-    const isDupe = await bridgeCheckDuplicate(memory.content);
-    if (isDupe) {
-      dupes++;
-      continue;
-    }
-
-    const result = await bridgeStore(
-      {
-        ...memory,
-        context: `Auto-extracted (confidence: ${memory.confidence.toFixed(2)})`,
-      },
-      projectIds
-    );
-
-    if (result && result.success !== false) {
-      saved++;
-      if (result.id) {
-        const related = await bridgeRecall(memory.content, 3);
-        const relatedIds = related
-          .filter((m) => m.id !== result.id && m.score > 0.5)
-          .map((m) => m.id);
-        if (relatedIds.length > 0) await bridgeLink(result.id, relatedIds);
-      }
-    }
-  }
-
-  // Queue low-confidence for review
-  if (low.length > 0) {
-    const pendingDir = path.join(cwd, ".forgetful", "pending");
-    try {
-      if (!fs.existsSync(pendingDir))
-        fs.mkdirSync(pendingDir, { recursive: true });
-      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-      fs.writeFileSync(
-        path.join(pendingDir, `pending-${timestamp}.json`),
-        JSON.stringify(
-          {
-            extracted_at: new Date().toISOString(),
-            memories: low.map((m) => ({
-              ...m,
-              status: "pending_review",
-              reason: `Confidence ${m.confidence.toFixed(2)} below ${CONFIG.AUTO_SAVE_THRESHOLD}`,
-            })),
-          },
-          null,
-          2
-        )
-      );
-    } catch (e: any) {
-      log("save", `Failed to write pending: ${e.message}`);
-    }
-  }
-
-  log(
-    "save",
-    `Saved ${saved}/${high.length} (${dupes} dupes), queued ${low.length} for review`
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Full extraction pipeline (compact + shutdown share this)
-// ---------------------------------------------------------------------------
-
-async function runExtractionPipeline(
-  messages: Array<{ role: string; content: string }>,
-  cwd: string,
-  sessionId: string,
-  reason: string
-) {
-  const userText = cleanText(
-    messages
-      .filter((m) => m.role === "user")
-      .map((m) => m.content)
-      .join("\n\n")
-  );
-  const agentText = cleanText(
-    messages
-      .filter((m) => m.role === "assistant")
-      .slice(-3)
-      .map((m) => m.content)
-      .join("\n\n")
-  );
-  const combinedText = `USER:\n${userText}\n\nASSISTANT:\n${agentText}`;
-
-  if (combinedText.length < 200) {
-    log(reason, `Text too short: ${combinedText.length} chars`);
-    return;
-  }
-
-  const { name: projectName, forgetfulId, repoName } = detectProject(cwd);
-  let projectId = forgetfulId;
-  if (!projectId) {
-    projectId = await bridgeEnsureProject(projectName, repoName);
-  }
-  const projectIds = projectId ? [projectId] : [];
-
-  log(reason, `Extracting from ${combinedText.length} chars for ${projectName}`);
-  const extractions = await extractWithLLM(combinedText, combinedText);
-  log(reason, `Extracted ${extractions.length} items`);
-
-  // Process queued candidates from agent_end
-  const queued = readQueue(sessionId);
-
-  if (extractions.length === 0 && queued.length === 0) {
-    cleanupQueue(sessionId);
-    return;
-  }
-
-  // Score all extractions
-  const allMemories = [];
-
-  for (const item of extractions.slice(0, CONFIG.MAX_MEMORIES)) {
-    const score = await scoreCandidate(item.content, item.type);
-    allMemories.push({
-      title: `${item.type.charAt(0).toUpperCase() + item.type.slice(1)}: ${item.content.slice(0, 55)}...`,
-      content: `**${item.type.charAt(0).toUpperCase() + item.type.slice(1)}:** ${item.content}`,
-      tags: [projectName, item.type, `${reason}-extracted`],
-      keywords: [item.type, projectName],
-      confidence: score,
-      importance: item.type === "decision" || item.type === "solution" ? 7 : 6,
-    });
-  }
-
-  // Score queued candidates
-  const typeMap: Record<string, { tag: string; label: string; importance: number; scoringKey: string }> = {
-    explanations: { tag: "root-cause", label: "Root Cause", importance: 7, scoringKey: "solution" },
-    solutions: { tag: "solution", label: "Solution", importance: 7, scoringKey: "solution" },
-    architecture: { tag: "architecture", label: "Architecture", importance: 6, scoringKey: "architecture" },
-    warnings: { tag: "gotcha", label: "Gotcha", importance: 6, scoringKey: "learning" },
-    failures: { tag: "failure", label: "Failure", importance: 7, scoringKey: "failure" },
-    system: { tag: "system", label: "System", importance: 6, scoringKey: "system" },
-  };
-
-  const seenContent = new Set(allMemories.map((m) => m.content));
-  for (const candidate of queued) {
-    if (seenContent.has(candidate.content)) continue;
-    seenContent.add(candidate.content);
-
-    const meta = typeMap[candidate.type] || {
-      tag: "insight",
-      label: "Insight",
-      importance: 5,
-      scoringKey: "learning",
-    };
-    const score = await scoreCandidate(candidate.content, meta.scoringKey);
-    allMemories.push({
-      title: `${meta.label}: ${candidate.content.slice(0, 55)}...`,
-      content: `**${meta.label}:** ${candidate.content}`,
-      tags: [projectName, meta.tag, "agent-extracted"],
-      keywords: [meta.tag, projectName],
-      confidence: score,
-      importance: meta.importance,
-    });
-  }
-
-  await savePipeline(allMemories.slice(0, 10), projectIds, cwd);
-  cleanupQueue(sessionId);
-}
-
-// ---------------------------------------------------------------------------
-// Read session messages from pi's session manager
-// ---------------------------------------------------------------------------
 
 function getSessionMessages(
   ctx: any
 ): Array<{ role: string; content: string }> {
   const messages: Array<{ role: string; content: string }> = [];
-
   try {
     const branch = ctx.sessionManager.getBranch();
     for (const entry of branch) {
@@ -828,31 +583,21 @@ function getSessionMessages(
   } catch (e: any) {
     log("session", `Failed to read messages: ${e.message}`);
   }
-
   return messages;
-}
-
-function getSessionId(ctx: any): string {
-  try {
-    const file = ctx.sessionManager.getSessionFile();
-    if (file) return path.basename(file, path.extname(file));
-  } catch {}
-  return `pi-${Date.now()}`;
 }
 
 // ---------------------------------------------------------------------------
 // Extension entry point
 // ---------------------------------------------------------------------------
 
-export default function (pi: ExtensionAPI) {
-  // Extension state
-  let projectName: string | null = null;
-  let projectId: number | null = null;
+export default function(pi: ExtensionAPI) {
   let pendingContext: string | null = null;
+  let projectName: string | null = null;
+  let repoName: string | null = null;
   let lastInputHash: string | null = null;
 
   // =========================================================================
-  // 1. SESSION START - detect project, query bridge for context
+  // 1. SESSION START - search qmd for project context
   // =========================================================================
 
   pi.on("session_start", async (_event, ctx) => {
@@ -860,51 +605,26 @@ export default function (pi: ExtensionAPI) {
       const cwd = ctx.cwd || process.cwd();
       const project = detectProject(cwd);
       projectName = project.name;
-      projectId = project.forgetfulId;
+      repoName = project.repoName;
 
       log("start", `Project: ${projectName}, cwd: ${cwd}`);
 
-      // Run project ensure + batch recall in parallel to cut latency
-      const ensurePromise = !projectId
-        ? bridgeEnsureProject(projectName, project.repoName)
-        : Promise.resolve(projectId);
+      // 1. Read all project topic files directly (guaranteed, no search needed)
+      const projectTopics = readProjectTopics(projectName);
 
-      const recallPromise = bridgeBatchRecall(
-        [
-          { query: `${projectName} project architecture`, limit: CONFIG.PROJECT_MEMORY_LIMIT },
-          { query: "global patterns conventions best practices", limit: CONFIG.GLOBAL_PATTERN_LIMIT },
-        ],
-        projectId // may be null on first run, that's OK - bridge handles it
+      // 2. Search for cross-project patterns that might be relevant
+      const globalResults = qmdSearch(
+        `${projectName} conventions patterns best practices`,
+        CONFIG.GLOBAL_RECALL_LIMIT
       );
 
-      const [resolvedId, batchResults] = await Promise.all([
-        ensurePromise,
-        recallPromise,
-      ]);
-
-      if (resolvedId) {
-        projectId = resolvedId;
-        log("start", `Resolved project ID: ${projectId}`);
-      }
-
-      const [projectMemories, globalPatterns] = batchResults;
-
-      // Load local .forgetful/ files
-      const localContext = loadLocalContext(cwd);
-
-      // Format and store for injection
-      const formatted = formatProjectContext(
-        projectName,
-        projectMemories,
-        globalPatterns,
-        localContext
-      );
+      const formatted = formatStartContext(projectName, projectTopics, globalResults);
 
       if (formatted) {
         pendingContext = formatted;
-        log("start", `Prepared context for ${projectName}`);
+        log("start", `Prepared: ${projectTopics.length} topics + ${globalResults.length} global`);
       } else {
-        log("start", "No context to inject");
+        log("start", "No memories found");
       }
     } catch (e: any) {
       log("start", `Error: ${e.message}`);
@@ -912,110 +632,107 @@ export default function (pi: ExtensionAPI) {
   });
 
   // =========================================================================
-  // 2. BEFORE AGENT START - inject session context
+  // 2. BEFORE AGENT START - inject recalled context
   // =========================================================================
 
   pi.on("before_agent_start", async (_event, _ctx) => {
     if (!pendingContext) return;
 
     try {
-      // Inject project context as a system entry
       pi.appendEntry("memory_context", {
         type: "project_context",
         content: pendingContext,
       });
       log("inject", "Injected project context");
-      pendingContext = null;
-    } catch (e: any) {
-      // Fallback: send as message
+    } catch {
       try {
         pi.sendMessage(pendingContext!, { role: "system" });
-        log("inject", "Injected via sendMessage fallback");
-      } catch (e2: any) {
-        log("inject", `Failed to inject: ${e.message}, ${e2.message}`);
-      }
-      pendingContext = null;
+      } catch { }
     }
+    pendingContext = null;
   });
 
   // =========================================================================
-  // 3. INPUT - query bridge with user prompt, inject relevant memories
+  // 3. INPUT - per-message recall from qmd
   // =========================================================================
+  //
+  // On each user message, search qmd for relevant memories and inject them.
+  // This ensures the agent always has relevant context without needing to
+  // remember to search itself. Skips trivial inputs and deduplicates.
+  //
 
-  pi.on("input", async (event, ctx) => {
+  pi.on("input", async (event, _ctx) => {
     try {
       const userPrompt = event.text;
       if (!userPrompt || shouldSkip(userPrompt)) {
         return { action: "continue" };
       }
 
-      // Hash check to avoid duplicate queries
       const hash = hashContent(userPrompt);
       if (hash === lastInputHash) return { action: "continue" };
       lastInputHash = hash;
 
       log("input", `Query: ${userPrompt.slice(0, 60)}`);
 
-      // Query bridge for relevant memories
-      const results = await bridgeRecall(
-        userPrompt,
-        CONFIG.QUERY_LIMIT,
-        projectId
-      );
+      const results = qmdSearch(userPrompt, CONFIG.INPUT_RECALL_LIMIT);
+      if (results.length === 0) return { action: "continue" };
 
-      if (!results || results.length === 0) {
-        return { action: "continue" };
-      }
+      log("input", `Found ${results.length} results`);
 
-      log("input", `Got ${results.length} results`);
-
-      const formatted = formatRecallResults(results);
+      const formatted = formatInputRecall(results);
       if (!formatted) return { action: "continue" };
 
-      // Inject memory context
       try {
-        pi.appendEntry("memory_context", {
-          type: "recall",
+        pi.appendEntry("memory_recall", {
+          type: "input_recall",
           content: formatted,
         });
       } catch {
         try {
           pi.sendMessage(formatted, { role: "system" });
-        } catch {}
+        } catch { }
       }
 
-      log("input", "Injected recall results");
+      log("input", "Injected recall");
     } catch (e: any) {
       log("input", `Error: ${e.message}`);
     }
-
     return { action: "continue" };
   });
 
   // =========================================================================
-  // 4. AGENT END - extract patterns from last response, queue for later
+  // 4. AGENT END - capture ★ Insight blocks from responses
   // =========================================================================
+  //
+  // The agent produces educational insight blocks (from the explanatory
+  // output style). These are high-quality, already-summarized knowledge
+  // that's perfect for memory. We extract and save them directly.
+  //
 
   pi.on("agent_end", async (_event, ctx) => {
     try {
       const messages = getSessionMessages(ctx);
       if (messages.length === 0) return;
 
-      // Get last assistant message
       const lastAssistant = messages
         .filter((m) => m.role === "assistant")
         .pop();
       if (!lastAssistant || lastAssistant.content.length < 50) return;
 
-      const cleaned = cleanText(lastAssistant.content);
-      const candidates = extractPatterns(cleaned);
+      const insights = extractInsights(lastAssistant.content);
+      if (insights.length === 0) return;
 
-      if (candidates.length > 0) {
-        const sessionId = getSessionId(ctx);
-        const cwd = ctx.cwd || process.cwd();
-        const project = projectName || path.basename(cwd);
-        queueCandidates(candidates, sessionId, project);
-        log("agent-end", `Queued ${candidates.length} candidates`);
+      const project = projectName || "unknown";
+
+      let saved = 0;
+      for (const insight of insights) {
+        if (saveInsightToMemory(insight.title, insight.content, project, repoName)) {
+          saved++;
+        }
+      }
+
+      if (saved > 0) {
+        log("agent-end", `Saved ${saved}/${insights.length} insights`);
       }
     } catch (e: any) {
       log("agent-end", `Error: ${e.message}`);
@@ -1023,78 +740,314 @@ export default function (pi: ExtensionAPI) {
   });
 
   // =========================================================================
-  // 5. SESSION BEFORE COMPACT - export transcript, extract + save memories
+  // 5. SESSION BEFORE COMPACT - save session checkpoint
   // =========================================================================
+  //
+  // When context is about to be compacted, save a lightweight checkpoint
+  // of what was discussed (topics + files). No LLM needed.
+  // This is a safety net - the agent should have saved important memories
+  // during the session, but this captures breadcrumbs if it didn't.
+  //
 
   pi.on("session_before_compact", async (_event, ctx) => {
-    const COMPACT_TIMEOUT = 25000;
-    const done = new Promise<void>((resolve) => {
-      setTimeout(() => {
-        log("compact", "Timeout - aborting extraction");
-        resolve();
-      }, COMPACT_TIMEOUT);
-    });
+    try {
+      const messages = getSessionMessages(ctx);
+      const project = projectName || "unknown";
 
-    const work = (async () => {
-      try {
-        const cwd = ctx.cwd || process.cwd();
-        const sessionId = getSessionId(ctx);
-        const messages = getSessionMessages(ctx);
-
-        log("compact", `Processing ${messages.length} messages`);
-
-        // Export transcript
-        exportSessionAsMarkdown(messages, sessionId, "compact");
-
-        // Run extraction pipeline
-        if (messages.length >= CONFIG.MIN_SESSION_MESSAGES) {
-          await runExtractionPipeline(messages, cwd, sessionId, "compact");
-        }
-      } catch (e: any) {
-        log("compact", `Error: ${e.message}`);
-      }
-    })();
-
-    await Promise.race([work, done]);
-    log("compact", "Done");
+      saveSessionCheckpoint(messages, project, repoName);
+      log("compact", `Checkpoint saved (${messages.length} messages)`);
+    } catch (e: any) {
+      log("compact", `Error: ${e.message}`);
+    }
   });
 
   // =========================================================================
-  // 6. SESSION SHUTDOWN - export transcript, extract + save, process queue
+  // 6. SESSION SHUTDOWN - spawn background summarizer via pi -p
   // =========================================================================
+  //
+  // Copies the session JSONL to a temp location, then spawns a detached
+  // shell script that pipes it to `pi -p` (Sonnet) for summarization.
+  // Sonnet understands Pi's JSONL format natively - no preprocessing needed.
+  // The detached process outlives Pi's exit.
+  //
 
   pi.on("session_shutdown", async (_event, ctx) => {
-    // Hard timeout - never block session exit
-    const SHUTDOWN_TIMEOUT = 20000;
-    const done = new Promise<void>((resolve) => {
-      setTimeout(() => {
-        log("shutdown", "Timeout - aborting extraction");
-        resolve();
-      }, SHUTDOWN_TIMEOUT);
-    });
+    try {
+      const messages = getSessionMessages(ctx);
 
-    const work = (async () => {
-      try {
-        const cwd = ctx.cwd || process.cwd();
-        const sessionId = getSessionId(ctx);
-        const messages = getSessionMessages(ctx);
-
-        log("shutdown", `Processing ${messages.length} messages`);
-
-        // Export transcript (fast, local I/O only)
-        exportSessionAsMarkdown(messages, sessionId, "end");
-
-        // Run extraction pipeline (slow, involves Ollama)
-        if (messages.length >= CONFIG.MIN_SESSION_MESSAGES) {
-          await runExtractionPipeline(messages, cwd, sessionId, "shutdown");
-        }
-      } catch (e: any) {
-        log("shutdown", `Error: ${e.message}`);
+      if (messages.length < CONFIG.MIN_MESSAGES_FOR_SUMMARY) {
+        log("shutdown", `Skipped (${messages.length} < ${CONFIG.MIN_MESSAGES_FOR_SUMMARY} messages)`);
+        return;
       }
-    })();
 
-    // Race: finish work or timeout, whichever comes first
-    await Promise.race([work, done]);
-    log("shutdown", "Done");
+      // Get the session JSONL file path
+      let sessionFile: string | null = null;
+      try {
+        sessionFile = ctx.sessionManager.getSessionFile();
+      } catch { }
+
+      if (!sessionFile || !fs.existsSync(sessionFile)) {
+        log("shutdown", "No session file found, skipping summarization");
+        return;
+      }
+
+      const project = projectName || "unknown";
+      const repo = repoName || "";
+
+      // Copy session JSONL to temp (original may be modified after shutdown)
+      if (!fs.existsSync(CONFIG.TEMP_DIR))
+        fs.mkdirSync(CONFIG.TEMP_DIR, { recursive: true });
+
+      const tempSession = path.join(CONFIG.TEMP_DIR, `session-${Date.now()}.jsonl`);
+      fs.copyFileSync(sessionFile, tempSession);
+
+      const sessionSize = fs.statSync(tempSession).size;
+
+      // Build and spawn the summarizer
+      const script = buildSummarizerScript(
+        tempSession,
+        project,
+        repo,
+        CONFIG.MEMORY_DIR,
+        CONFIG.LOG_FILE,
+        CONFIG.SUMMARIZER_MODEL
+      );
+
+      const child = spawn("bash", ["-c", script], {
+        detached: true,
+        stdio: "ignore",
+        env: { ...process.env },
+      });
+      child.unref();
+
+      log("shutdown", `Spawned summarizer (pid: ${child.pid}, ${messages.length} messages, ${(sessionSize / 1024).toFixed(0)}K)`);
+    } catch (e: any) {
+      log("shutdown", `Error: ${e.message}`);
+    }
   });
+}
+
+// ---------------------------------------------------------------------------
+// Background summarizer shell script builder
+// ---------------------------------------------------------------------------
+//
+// Generates a bash script that maintains TOPIC-BASED memory files per project.
+//
+// Flow:
+//   1. Find existing <project>--*.md files in projects/ directory
+//   2. Feed existing file titles + content + new session JSONL to Sonnet
+//   3. Sonnet decides: which files to update, which new topics to create
+//   4. For updates: merge new info into existing file content
+//   5. For creates: write new topic file
+//
+// This gives natural dedup (topics get merged, not appended) and natural
+// organization (Sonnet decides topic boundaries, not keyword matching).
+//
+
+function buildSummarizerScript(
+  sessionFile: string,
+  project: string,
+  repoName: string,
+  memoryDir: string,
+  logFile: string,
+  model: string
+): string {
+  const safeProject = project.replace(/[^a-zA-Z0-9_-]/g, "-");
+
+  return `
+set -euo pipefail
+
+SESSION_FILE="${sessionFile}"
+PROJECT="${project}"
+SAFE_PROJECT="${safeProject}"
+REPO_NAME="${repoName}"
+MEMORY_DIR="${memoryDir}"
+LOG_FILE="${logFile}"
+PROJECTS_DIR="$MEMORY_DIR/projects"
+
+log() { echo "$(date -Iseconds) [memory:summarizer] $1" >> "$LOG_FILE" 2>/dev/null || true; }
+
+SESSION_SIZE=$(wc -c < "$SESSION_FILE" | tr -d ' ')
+log "Starting: project=$PROJECT size=\${SESSION_SIZE}B model=${model}"
+
+mkdir -p "$PROJECTS_DIR"
+
+# Collect existing topic files for this project
+EXISTING_SECTION=""
+FILE_COUNT=0
+for f in "$PROJECTS_DIR"/"\${SAFE_PROJECT}"--*.md; do
+  [ -f "$f" ] || continue
+  FILE_COUNT=$((FILE_COUNT + 1))
+  BASENAME=$(basename "$f")
+  # Extract body after frontmatter (after first blank line)
+  BODY=$(awk 'BEGIN{found=0} /^$/{if(!found){found=1;next}} found{print}' "$f")
+  EXISTING_SECTION="$EXISTING_SECTION
+---
+FILE: $BASENAME
+CONTENT:
+$BODY
+"
+done
+
+log "Found $FILE_COUNT existing topic files for $SAFE_PROJECT"
+
+# Build prompt
+PROMPT_FILE=$(mktemp /tmp/pi-summary-prompt-XXXXXX.txt)
+
+cat > "$PROMPT_FILE" << 'PROMPT_END'
+You maintain topic-based memory files for a project. Each file covers ONE specific topic/area.
+
+PROMPT_END
+
+if [ -n "$EXISTING_SECTION" ]; then
+  echo "EXISTING MEMORY FILES for this project:" >> "$PROMPT_FILE"
+  echo "$EXISTING_SECTION" >> "$PROMPT_FILE"
+  echo "---" >> "$PROMPT_FILE"
+  echo "" >> "$PROMPT_FILE"
+fi
+
+cat >> "$PROMPT_FILE" << 'PROMPT_END'
+Given the NEW SESSION JSONL below, produce a JSON response with:
+1. "updates" - existing files that need new info merged in. Include the FULL updated content (merged old + new, not just the diff).
+2. "creates" - new topic files for topics not covered by existing files.
+
+Rules:
+- Each file should cover ONE coherent topic (max 300 words per file)
+- Be specific: include file names, commands, config values
+- Bullet points under clear headers
+- File names must use format: PROJECTNAME--topic-slug.md
+- Only create/update if the session has meaningful info for that topic
+- Skip trivial sessions (just greetings, short Q&A with no lasting value)
+- Output ONLY valid JSON, no markdown fencing, no preamble, no explanation
+
+PROMPT_END
+
+echo "Project name for filenames: $SAFE_PROJECT" >> "$PROMPT_FILE"
+echo "" >> "$PROMPT_FILE"
+echo "NEW SESSION JSONL:" >> "$PROMPT_FILE"
+cat "$SESSION_FILE" >> "$PROMPT_FILE"
+echo "" >> "$PROMPT_FILE"
+echo "JSON:" >> "$PROMPT_FILE"
+
+# Call pi -p
+RAW_RESPONSE=$(cat "$PROMPT_FILE" | pi -p --model "${model}" 2>/dev/null) || {
+  log "pi -p failed (exit $?)"
+  rm -f "$SESSION_FILE" "$PROMPT_FILE"
+  exit 1
+}
+
+rm -f "$PROMPT_FILE"
+
+# Extract JSON from response (strip any markdown fencing or preamble)
+# First try: find the JSON object directly
+JSON_RESPONSE=$(echo "$RAW_RESPONSE" | grep -Pzo '(?s)\{.*\}' | tr '\\0' '\\n')
+if [ -z "$JSON_RESPONSE" ]; then
+  # Fallback: pipe through python to extract JSON
+  JSON_RESPONSE=$(echo "$RAW_RESPONSE" | python3 -c "
+import sys, re, json
+text = sys.stdin.read()
+m = re.search(r'\\{[\\s\\S]*\\}', text)
+if m:
+    try:
+        json.loads(m.group())
+        print(m.group())
+    except: pass
+" 2>/dev/null)
+fi
+
+if [ -z "$JSON_RESPONSE" ]; then
+  log "No valid JSON in response, skipping"
+  rm -f "$SESSION_FILE"
+  exit 0
+fi
+
+log "Got JSON response (\${#JSON_RESPONSE} chars)"
+
+DATE=$(date +%Y-%m-%d)
+TAGS="#$PROJECT, #project-memory, #auto-maintained"
+[ -n "$REPO_NAME" ] && TAGS="$TAGS, #$(echo "$REPO_NAME" | tr '/' '-')"
+
+SAVED=0
+UPDATED=0
+
+# Process updates
+echo "$JSON_RESPONSE" | jq -c '.updates[]? // empty' 2>/dev/null | while IFS= read -r item; do
+  FILENAME=$(echo "$item" | jq -r '.filename // empty')
+  CONTENT=$(echo "$item" | jq -r '.content // empty')
+
+  if [ -z "$FILENAME" ] || [ -z "$CONTENT" ] || [ \${#CONTENT} -lt 30 ]; then
+    continue
+  fi
+
+  # Ensure filename has correct project prefix
+  case "$FILENAME" in
+    "\${SAFE_PROJECT}"--*) ;; # good
+    *) FILENAME="\${SAFE_PROJECT}--$FILENAME" ;;
+  esac
+
+  FILEPATH="$PROJECTS_DIR/$FILENAME"
+
+  # Extract title from filename for frontmatter
+  TITLE=$(echo "$FILENAME" | sed "s/^\${SAFE_PROJECT}--//" | sed 's/\.md$//' | tr '-' ' ')
+
+  {
+    echo "title:: $PROJECT: $TITLE"
+    echo "tags:: $TAGS"
+    echo "updated:: [[$DATE]]"
+    echo "importance:: 7"
+    echo "type:: project-memory"
+    [ -n "$REPO_NAME" ] && echo "source-repo:: $REPO_NAME"
+    echo ""
+    echo "$CONTENT"
+    echo ""
+  } > "$FILEPATH"
+
+  log "Updated: $FILENAME (\${#CONTENT} chars)"
+  UPDATED=$((UPDATED + 1))
+done
+
+# Process creates
+echo "$JSON_RESPONSE" | jq -c '.creates[]? // empty' 2>/dev/null | while IFS= read -r item; do
+  FILENAME=$(echo "$item" | jq -r '.filename // empty')
+  CONTENT=$(echo "$item" | jq -r '.content // empty')
+
+  if [ -z "$FILENAME" ] || [ -z "$CONTENT" ] || [ \${#CONTENT} -lt 30 ]; then
+    continue
+  fi
+
+  case "$FILENAME" in
+    "\${SAFE_PROJECT}"--*) ;; # good
+    *) FILENAME="\${SAFE_PROJECT}--$FILENAME" ;;
+  esac
+
+  FILEPATH="$PROJECTS_DIR/$FILENAME"
+
+  # Skip if file already exists (shouldn't happen but safety check)
+  if [ -f "$FILEPATH" ]; then
+    log "Skipped create (already exists): $FILENAME"
+    continue
+  fi
+
+  TITLE=$(echo "$FILENAME" | sed "s/^\${SAFE_PROJECT}--//" | sed 's/\.md$//' | tr '-' ' ')
+
+  {
+    echo "title:: $PROJECT: $TITLE"
+    echo "tags:: $TAGS"
+    echo "created:: [[$DATE]]"
+    echo "importance:: 7"
+    echo "type:: project-memory"
+    [ -n "$REPO_NAME" ] && echo "source-repo:: $REPO_NAME"
+    echo ""
+    echo "$CONTENT"
+    echo ""
+  } > "$FILEPATH"
+
+  log "Created: $FILENAME (\${#CONTENT} chars)"
+  SAVED=$((SAVED + 1))
+done
+
+# Clean up
+rm -f "$SESSION_FILE"
+log "Done"
+`;
 }

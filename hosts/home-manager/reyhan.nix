@@ -10,6 +10,7 @@
       programs
       tmux
       wezterm
+      pi
       inputs.sops.homeManagerModules.sops
     ] ++ lib.optionals (osConfig.networking.hostName == "nixos-asus")
     [ hyprland ];

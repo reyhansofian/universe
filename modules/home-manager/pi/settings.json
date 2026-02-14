@@ -1,0 +1,24 @@
+{
+  "lastChangelogVersion": "0.52.12",
+  "defaultProvider": "anthropic",
+  "defaultModel": "claude-opus-4-6",
+  "packages": [
+    "npm:pi-mcp-adapter",
+    "npm:pi-subagents",
+    "npm:pi-powerline-footer",
+    "npm:shitty-extensions",
+    "npm:@aliou/pi-guardrails",
+    "npm:@tmustier/pi-files-widget",
+    "npm:pi-notify",
+    "npm:pi-super-curl",
+    "npm:@tmustier/pi-agent-teams",
+    "npm:pi-prompt-template-model"
+  ],
+  "steeringMode": "one-at-a-time",
+  "defaultThinkingLevel": "medium",
+  "showHardwareCursor": true,
+  "theme": "dark",
+  "collapseChangelog": true,
+  "editorPaddingX": 1,
+  "hideThinkingBlock": false
+}
