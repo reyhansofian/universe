@@ -1,5 +1,6 @@
 {
-  description = "NixOS + standalone home-manager config flakes to get you started!";
+  description =
+    "NixOS + standalone home-manager config flakes to get you started!";
 
   inputs = {
     nixpkgs.follows = "nixpkgs-unstable";
@@ -44,7 +45,7 @@
     };
 
     # Claude Code - Auto-updated version with Cachix support
-    claude-code-nix.url = "github:sadjow/claude-code-nix/v2.1.41";
+    claude-code-nix.url = "github:sadjow/claude-code-nix/v2.1.42";
 
     # Ralph for Claude Code - Autonomous development loops
     ralph-claude-code = {
@@ -71,109 +72,102 @@
     max-substitution-jobs = 128;
   };
 
-  outputs =
-    inputs@{ flake-parts, ... }:
+  outputs = inputs@{ flake-parts, ... }:
+    let
+      lib = inputs.nixpkgs.lib;
+
+      nixpkgsConfig = {
+        allowBroken = true;
+        allowUnfree = true;
+        tarball-ttl = 0;
+
+        # Experimental options, disable if you don't know what you are doing!
+        contentAddressedByDefault = false;
+      };
+
+      icons = import ./modules/nix/icons.nix;
+      colors = import ./modules/nix/colors.nix { inherit lib; };
+      color = colors.mkColor colors.lists.edge;
+
+      defaultOverlay = final: prev: {
+        # Provide dummy ansible-language-server for nixvim compatibility
+        # ansible-language-server was removed from nixpkgs but nixvim still references it
+        ansible-language-server =
+          final.runCommand "ansible-language-server-stub" {
+            meta.homepage = null;
+          } "mkdir -p $out";
+
+        # Fix fcitx5-with-addons location change for home-manager compatibility
+        # fcitx5-with-addons was moved from libsForQt5 to kdePackages
+        libsForQt5 = prev.libsForQt5 // {
+          fcitx5-with-addons =
+            final.kdePackages.fcitx5-with-addons or (final.runCommand
+              "fcitx5-with-addons-stub" { } "mkdir -p $out");
+        };
+
+        branches = let
+          pkgsFrom = branch: system:
+            import branch {
+              inherit system;
+              config = nixpkgsConfig;
+            };
+        in {
+          master = pkgsFrom inputs.nixpkgs-master
+            prev.stdenv.hostPlatform.system;
+          stable = pkgsFrom inputs.nixpkgs-stable
+            prev.stdenv.hostPlatform.system;
+          stable-24 = pkgsFrom inputs.nixpkgs-stable-24
+            prev.stdenv.hostPlatform.system;
+          unstable = pkgsFrom inputs.nixpkgs-unstable
+            prev.stdenv.hostPlatform.system;
+        };
+      };
+
+      nixpkgsOverlays = [ defaultOverlay ];
+    in
     flake-parts.lib.mkFlake { inherit inputs; } {
 
       imports = [
         inputs.ez-configs.flakeModule
         ./modules/nix
         ./nvim
-        (
-          { lib, ... }:
-          {
-            flake = {
-              overlays.default = final: prev: {
-                # Provide dummy ansible-language-server for nixvim compatibility
-                # ansible-language-server was removed from nixpkgs but nixvim still references it
-                ansible-language-server = final.runCommand "ansible-language-server-stub" {
-                  meta.homepage = null;
-                } "mkdir -p $out";
-
-                # Fix fcitx5-with-addons location change for home-manager compatibility
-                # fcitx5-with-addons was moved from libsForQt5 to kdePackages
-                libsForQt5 = prev.libsForQt5 // {
-                  fcitx5-with-addons =
-                    final.kdePackages.fcitx5-with-addons
-                      or (final.runCommand "fcitx5-with-addons-stub" { } "mkdir -p $out");
-                };
-
-                branches =
-                  let
-                    pkgsFrom =
-                      branch: system:
-                      import branch {
-                        inherit system;
-                        inherit (inputs.self.nixpkgs) config;
-                      };
-                  in
-                  {
-                    master = pkgsFrom inputs.nixpkgs-master prev.stdenv.hostPlatform.system;
-                    stable = pkgsFrom inputs.nixpkgs-stable prev.stdenv.hostPlatform.system;
-                    stable-24 = pkgsFrom inputs.nixpkgs-stable-24 prev.stdenv.hostPlatform.system;
-                    unstable = pkgsFrom inputs.nixpkgs-unstable prev.stdenv.hostPlatform.system;
-                  };
-              };
-
-              # Put your original flake attributes here.
-              nixpkgs = {
-                config = {
-                  allowBroken = true;
-                  allowUnfree = true;
-                  tarball-ttl = 0;
-
-                  # Experimental options, disable if you don't know what you are doing!
-                  contentAddressedByDefault = false;
-                };
-
-                overlays = lib.attrValues inputs.self.overlays;
-              };
-
-              icons = import ./modules/nix/icons.nix;
-              colors = import ./modules/nix/colors.nix { inherit lib; };
-              color = inputs.self.colors.mkColor inputs.self.colors.lists.edge;
-            };
-          }
-        )
         {
-          perSystem =
-            {
-              system,
-              inputs',
-              pkgs,
-              ...
-            }:
-            {
-              formatter = inputs'.nixpkgs.legacyPackages.nixfmt-rfc-style;
-              _module.args = {
-                inherit (inputs.self) icons colors color;
-                extraModuleArgs = { inherit (inputs.self) icons colors color; };
+          flake.overlays.default = defaultOverlay;
+        }
+        {
+          perSystem = { system, inputs', pkgs, ... }: {
+            formatter = inputs'.nixpkgs.legacyPackages.nixfmt-rfc-style;
+            _module.args = {
+              inherit icons colors color;
+              extraModuleArgs = { inherit icons colors color; };
 
-                pkgs = import inputs.nixpkgs {
-                  inherit system;
-                  inherit (inputs.self.nixpkgs) config overlays;
-                };
+              pkgs = import inputs.nixpkgs {
+                inherit system;
+                config = nixpkgsConfig;
+                overlays = nixpkgsOverlays;
               };
+            };
 
-              packages.ralph-claude-code = pkgs.callPackage ./pkgs/ralph-claude-code {
+            packages.ralph-claude-code =
+              pkgs.callPackage ./pkgs/ralph-claude-code {
                 ralph-claude-code-src = inputs.ralph-claude-code;
               };
 
-              packages.beads = pkgs.callPackage ./pkgs/beads { };
-              packages.beads-viewer = pkgs.callPackage ./pkgs/beads-viewer { };
-              packages.fix-serena-config = pkgs.callPackage ./pkgs/fix-serena-config { };
-              packages.tuicr = pkgs.callPackage ./pkgs/tuicr { };
-            };
+            packages.beads = pkgs.callPackage ./pkgs/beads { };
+            packages.beads-viewer = pkgs.callPackage ./pkgs/beads-viewer { };
+            packages.fix-serena-config =
+              pkgs.callPackage ./pkgs/fix-serena-config { };
+            packages.jj-ws = pkgs.callPackage ./pkgs/jj-ws { };
+            packages.tuicr = pkgs.callPackage ./pkgs/tuicr { };
+          };
         }
       ];
 
       ezConfigs = {
         root = ./.;
         globalArgs = {
-          inherit inputs;
+          inherit inputs icons colors color;
           inherit (inputs) self;
-          inherit (inputs.self) icons colors color;
-          # inherit (self) packages;
         };
         home.configurationsDirectory = ./hosts/home-manager;
         home.modulesDirectory = ./modules/home-manager;
@@ -182,20 +176,13 @@
         nixos.configurationsDirectory = ./hosts/nixos;
         nixos.modulesDirectory = ./modules/nixos;
         nixos.hosts = {
-          desktop = {
-            userHomeModules = [ "reyhan" ];
-          };
-          wsl = {
-            userHomeModules = [ "reyhan" ];
-          };
+          desktop = { userHomeModules = [ "reyhan" ]; };
+          wsl = { userHomeModules = [ "reyhan" ]; };
         };
 
         # darwin.configurationsDirectory = ./hosts/darwin;
       };
 
-      systems = [
-        "x86_64-linux"
-        "aarch64-linux"
-      ];
+      systems = [ "x86_64-linux" "aarch64-linux" ];
     };
 }
