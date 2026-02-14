@@ -1,5 +1,11 @@
 { pkgs, inputs, self, ... }: {
-  nixpkgs = { inherit (self.nixpkgs) config overlays; };
+  nixpkgs.config = {
+    allowBroken = true;
+    allowUnfree = true;
+    tarball-ttl = 0;
+    contentAddressedByDefault = false;
+  };
+  nixpkgs.overlays = builtins.attrValues self.overlays;
 
   imports = [
     inputs.nixos-wsl.nixosModules.default

@@ -2,7 +2,7 @@
   perSystem = { nixpkgs, pkgs, system, icons, branches, ... }:
     let
       nixvimLib = inputs.nixvim.lib;
-      helpers = nixvimLib.nixvim // {
+      luaHelpers = {
         mkLuaFunWithName = name: lua:
           # lua
           ''
@@ -28,7 +28,7 @@
           enableMan = false;
         };
         # You can use `extraSpecialArgs` to pass additional arguments to your module files
-        extraSpecialArgs = { inherit icons branches helpers system self; };
+        extraSpecialArgs = { inherit icons branches luaHelpers system self; };
       };
       nvim = nixvim'.makeNixvimWithModule nixvimModule;
       nvimCheck =

@@ -102,6 +102,11 @@
       enable = true;
       nix-direnv = { enable = true; };
       enableZshIntegration = true;
+      config = {
+        whitelist.prefix = [
+          "~/Projects"
+        ];
+      };
     };
 
     gpg = {

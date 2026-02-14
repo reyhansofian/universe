@@ -80,12 +80,10 @@
   # }];
   # services.xserver.displayManager.startx.enable = true;
 
-  services.logind = {
-    lidSwitch = "suspend";
-    lidSwitchExternalPower = "ignore";
-    extraConfig = ''
-      HandlePowerKey=ignore
-    '';
+  services.logind.settings.Login = {
+    HandleLidSwitch = "suspend";
+    HandleLidSwitchExternalPower = "ignore";
+    HandlePowerKey = "ignore";
   };
 
   xdg.portal = {
@@ -136,7 +134,7 @@
     enable = true;
     settings.default_session = {
       command =
-        "${pkgs.greetd.tuigreet}/bin/tuigreet --remember --time --cmd Hyprland";
+        "${pkgs.tuigreet}/bin/tuigreet --remember --time --cmd Hyprland";
     };
   };
 

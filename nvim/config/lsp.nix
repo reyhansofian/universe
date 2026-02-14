@@ -1,4 +1,4 @@
-{ pkgs, helpers, system, icons, lib, ... }: {
+{ pkgs, luaHelpers, system, icons, lib, ... }: {
   highlightOverride.LspInlayHint = {
     fg = "#8B949E"; # Light gray text
     bg = "#21262D"; # Subtle dark background
@@ -21,7 +21,7 @@
 
   # make custom command
   userCommands.LspInlay.desc = "Toggle Inlay Hints";
-  userCommands.LspInlay.command.__raw = helpers.mkLuaFun
+  userCommands.LspInlay.command.__raw = luaHelpers.mkLuaFun
     # lua
     ''
       vim.lsp.inlay_hint.enable(not vim.lsp.inlay_hint.is_enabled())

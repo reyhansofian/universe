@@ -1,4 +1,4 @@
-{ helpers, icons, pkgs, ... }:
+{ luaHelpers, icons, pkgs, ... }:
 let
   indentBlankLineHighlights = [
     "rainbowcol1"
@@ -52,7 +52,7 @@ in {
   ];
 
   userCommands.StatusLine.desc = "Toggle Status Line";
-  userCommands.StatusLine.command.__raw = helpers.mkLuaFun
+  userCommands.StatusLine.command.__raw = luaHelpers.mkLuaFun
     # lua
     ''
       local toggle = function()
@@ -219,7 +219,7 @@ in {
   autoCmd = [{
     event = [ "User" ];
     pattern = "LspProgressStatusUpdated";
-    callback.__raw = helpers.mkLuaFun # lua
+    callback.__raw = luaHelpers.mkLuaFun # lua
       ''
         require('lualine').refresh()
       '';

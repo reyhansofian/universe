@@ -1,4 +1,4 @@
-{ lib, helpers, icons, ... }:
+{ lib, luaHelpers, icons, ... }:
 
 rec {
   # plugins.copilot-lua.enable = true;
@@ -18,7 +18,7 @@ rec {
     # Disable cmp in neorepl
     event = [ "FileType" ];
     pattern = "neorepl";
-    callback.__raw = helpers.mkLuaFun # lua
+    callback.__raw = luaHelpers.mkLuaFun # lua
       ''
         require("cmp").setup.buffer { enabled = false }
       '';

@@ -32,7 +32,7 @@
       sqlite
       jump
       nodejs
-      branches.master.bun
+      pkgs.branches.master.bun
       devenv
       cmake
 
@@ -43,14 +43,15 @@
       git
       yadm
       jujutsu
-      inputs.self.packages.${pkgs.system}.tuicr
+      inputs.self.packages.${pkgs.stdenv.hostPlatform.system}.jj-ws
+      inputs.self.packages.${pkgs.stdenv.hostPlatform.system}.tuicr
 
       # AI/LLM Tools
       opencode
       gemini-cli
       uv # Required for Serena MCP
-      inputs.self.packages.${pkgs.system}.beads # Distributed git-backed graph issue tracker for AI agents
-      inputs.self.packages.${pkgs.system}.beads-viewer # TUI for visualizing Beads task dependencies
+      inputs.self.packages.${pkgs.stdenv.hostPlatform.system}.beads # Distributed git-backed graph issue tracker for AI agents
+      inputs.self.packages.${pkgs.stdenv.hostPlatform.system}.beads-viewer # TUI for visualizing Beads task dependencies
 
       # Language Servers for Serena MCP
       marksman # Markdown LSP

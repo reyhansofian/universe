@@ -38,8 +38,13 @@
   };
   users.defaultUserShell = pkgs.fish;
 
-  nixpkgs.config = { allowUnfree = true; };
-  nixpkgs.overlays = [ ];
+  nixpkgs.config = {
+    allowBroken = true;
+    allowUnfree = true;
+    tarball-ttl = 0;
+    contentAddressedByDefault = false;
+  };
+  nixpkgs.overlays = builtins.attrValues inputs.self.overlays;
 
   # Install firefox.
   programs.firefox.enable = true;
@@ -112,7 +117,7 @@
       PermitRootLogin = "yes";
     };
   };
-  services.logind.lidSwitch = "suspend";
+  services.logind.settings.Login.HandleLidSwitch = "suspend";
 
   # Set your time zone.
   time.timeZone = "Asia/Jakarta";
