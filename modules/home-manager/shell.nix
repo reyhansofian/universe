@@ -19,6 +19,9 @@
       ZSH_AUTOSUGGEST_STRATEGY=(completion history)
       eval "$(starship init zsh)"
 
+      # jj (Jujutsu) completions
+      source <(COMPLETE=zsh jj)
+
       # Bun global packages
       export BUN_INSTALL="$HOME/.bun"
       export PATH="$BUN_INSTALL/bin:$PATH"

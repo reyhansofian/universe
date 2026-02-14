@@ -235,6 +235,9 @@
       set fish_color_status brred
       set fish_color_search_match --background=brblue
       direnv hook fish | source
+
+      # jj (Jujutsu) completions
+      COMPLETE=fish jj | source
     '';
 
     # Login shell initialization
